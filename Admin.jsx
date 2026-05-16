@@ -307,7 +307,7 @@ function Sidebar({ view, setView, user, onLogout }) {
     { id: "kunden", icon: "👥", label: "Kunden" },
     { id: "angebote", icon: "📄", label: "Angebote" },
     { id: "rechnungen", icon: "💶", label: "Rechnungen" },
-    ...(user.role === "admin" ? [{ id: "team", icon: "🔐", label: "Team" }] : []),
+    ...(user.role === "admin" ? [{ id: "inhalte", icon: "✏️", label: "Website-Inhalte" }, { id: "team", icon: "🔐", label: "Team" }] : []),
   ];
 
   return (
@@ -1025,6 +1025,135 @@ function SignatureFlow({ lead, user, onClose, onSigned }) {
 }
 
 /* ══════════════════════════════════════════════════════════
+   INHALTE EDITOR — Website-Pakete live editieren
+══════════════════════════════════════════════════════════ */
+const DEF_PAKETE_ADMIN = [
+  { id:"starter",      name:"Starter",        price:"890 €",   for:"Handwerker, Gastronomen, lokale Dienstleister", featured:false,
+    feats:["5-seitige Website","Design nach Ihren Wünschen","Mobile-optimiert & schnell","Kontaktformular & Google Maps","Impressum & Datenschutz","3 Monate Support"] },
+  { id:"professional", name:"Professional",   price:"1.490 €", for:"Unternehmen die online wachsen wollen",         featured:true,
+    feats:["Alles aus Starter","Bis 10 Seiten","SEO-Optimierung","Blog / News-Bereich","Google Analytics","1 KI-Automation inklusive","6 Monate Support"] },
+  { id:"automation",   name:"Automation Only",price:"490 €",   for:"Wer schon eine Website hat",                   featured:false,
+    feats:["1 vollständiger Workflow","E-Mail / WhatsApp / CRM","Einrichtung & Einweisung","30 Tage Nachbetreuung"] },
+];
+
+function InhalteEditor() {
+  const [pakete, setPakete] = useState(() => {
+    try { const v = localStorage.getItem("os_content_pakete"); return v ? JSON.parse(v) : DEF_PAKETE_ADMIN; } catch { return DEF_PAKETE_ADMIN; }
+  });
+  const [saved, setSaved] = useState(false);
+  const [activePaket, setActivePaket] = useState(0);
+
+  const update = (pi, key, val) => setPakete(prev => prev.map((p, i) => i === pi ? { ...p, [key]: val } : p));
+  const updateFeat = (pi, fi, val) => setPakete(prev => prev.map((p, i) => i === pi ? { ...p, feats: p.feats.map((f, j) => j === fi ? val : f) } : p));
+  const addFeat = (pi) => setPakete(prev => prev.map((p, i) => i === pi ? { ...p, feats: [...p.feats, "Neues Feature"] } : p));
+  const removeFeat = (pi, fi) => setPakete(prev => prev.map((p, i) => i === pi ? { ...p, feats: p.feats.filter((_, j) => j !== fi) } : p));
+  const toggleFeatured = (pi) => setPakete(prev => prev.map((p, i) => ({ ...p, featured: i === pi })));
+
+  const save = () => {
+    try { localStorage.setItem("os_content_pakete", JSON.stringify(pakete)); setSaved(true); setTimeout(() => setSaved(false), 2500); } catch {}
+  };
+  const reset = () => { if (confirm("Auf Standard zurücksetzen?")) { setPakete(DEF_PAKETE_ADMIN); localStorage.removeItem("os_content_pakete"); } };
+
+  const inp = { background: BG3, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 14px", color: TEXT, fontSize: 13, fontFamily: "inherit", outline: "none", width: "100%", transition: "border-color .15s" };
+  const focus = e => e.currentTarget.style.borderColor = GOLD;
+  const blur = e => e.currentTarget.style.borderColor = BORDER;
+
+  const cur = pakete[activePaket];
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: TEXT, letterSpacing: "-0.02em" }}>Website-Inhalte</div>
+          <div style={{ fontSize: 13, color: TEXT_DIM, marginTop: 4 }}>Änderungen erscheinen sofort live auf der Website (nach Seiten-Reload).</div>
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={reset} style={{ background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_DIM, borderRadius: 8, padding: "10px 16px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Zurücksetzen</button>
+          <button onClick={save} style={{ background: saved ? "rgba(74,222,128,.15)" : GOLD, color: saved ? GREEN : "#070707", border: saved ? "1px solid rgba(74,222,128,.3)" : "none", borderRadius: 8, padding: "11px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", transition: "all .3s" }}>
+            {saved ? "✓ Gespeichert!" : "Speichern & Live schalten"}
+          </button>
+        </div>
+      </div>
+
+      <div style={{ background: "rgba(232,197,71,.06)", border: "1px solid rgba(232,197,71,.2)", borderRadius: 12, padding: "14px 20px", marginBottom: 24, fontSize: 13, color: TEXT_DIM }}>
+        💡 <strong style={{ color: TEXT }}>So funktioniert es:</strong> Pakete hier bearbeiten → Speichern → auf der Website die Seite neu laden. Preise, Features, alles editierbar.
+      </div>
+
+      {/* Paket Tabs */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+        {pakete.map((p, i) => (
+          <button key={i} onClick={() => setActivePaket(i)} style={{ flex: 1, padding: "12px", background: activePaket === i ? GOLD_DIM : "transparent", border: `1px solid ${activePaket === i ? GOLD_BORDER : BORDER}`, borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: activePaket === i ? 700 : 400, color: activePaket === i ? GOLD : TEXT_DIM, transition: "all .15s", position: "relative" }}>
+            {p.name}
+            {p.featured && <span style={{ position: "absolute", top: -6, right: -6, background: GOLD, color: "#070707", fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 10 }}>Beliebt</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* Paket Editor */}
+      <div style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: 14, padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Paket-Name</label>
+            <input style={inp} value={cur.name} onChange={e => update(activePaket, "name", e.target.value)} onFocus={focus} onBlur={blur} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Preis (frei editierbar)</label>
+            <input style={inp} value={cur.price} onChange={e => update(activePaket, "price", e.target.value)} placeholder="z.B. 890 € oder Ab 490 €" onFocus={focus} onBlur={blur} />
+          </div>
+        </div>
+
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Zielgruppen-Beschreibung</label>
+          <input style={inp} value={cur.for} onChange={e => update(activePaket, "for", e.target.value)} placeholder="Für wen ist dieses Paket?" onFocus={focus} onBlur={blur} />
+        </div>
+
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM }}>Features ({cur.feats.length})</label>
+            <button onClick={() => addFeat(activePaket)} style={{ fontSize: 12, background: GOLD_DIM, border: `1px solid ${GOLD_BORDER}`, color: GOLD, borderRadius: 6, padding: "4px 12px", cursor: "pointer", fontFamily: "inherit" }}>+ Feature hinzufügen</button>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {cur.feats.map((feat, fi) => (
+              <div key={fi} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <span style={{ color: GREEN, flexShrink: 0, fontSize: 14 }}>✓</span>
+                <input style={{ ...inp, flex: 1 }} value={feat} onChange={e => updateFeat(activePaket, fi, e.target.value)} onFocus={focus} onBlur={blur} />
+                <button onClick={() => removeFeat(activePaket, fi)} style={{ background: "rgba(248,113,113,.06)", border: "1px solid rgba(248,113,113,.15)", color: RED, borderRadius: 6, padding: "8px 12px", cursor: "pointer", fontFamily: "inherit", fontSize: 13, flexShrink: 0 }}>×</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 8, borderTop: `1px solid ${BORDER}` }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 14, color: TEXT }}>
+            <input type="checkbox" checked={cur.featured} onChange={() => toggleFeatured(activePaket)} style={{ accentColor: GOLD, width: 16, height: 16 }} />
+            Als "Beliebt" markieren (nur ein Paket gleichzeitig möglich)
+          </label>
+        </div>
+      </div>
+
+      {/* Vorschau */}
+      <div style={{ background: BG3, border: `1px solid ${BORDER}`, borderRadius: 14, padding: 24, marginTop: 20 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 16 }}>Vorschau — so erscheint es live</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
+          {pakete.map((p, i) => (
+            <div key={i} style={{ background: p.featured ? "linear-gradient(160deg,rgba(232,197,71,.06) 0%,#161616 50%)" : "#0f0f0f", border: `1px solid ${p.featured ? "rgba(232,197,71,.3)" : "rgba(255,255,255,.07)"}`, borderRadius: 10, padding: 18, position: "relative", opacity: i === activePaket ? 1 : 0.5, transition: "opacity .2s" }}>
+              {p.featured && <div style={{ position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)", background: GOLD, color: "#070707", fontSize: 10, fontWeight: 700, padding: "2px 12px", borderRadius: 20 }}>Beliebt</div>}
+              <div style={{ fontSize: 11, color: "rgba(240,240,240,.35)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 4 }}>{p.name}</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: "#f0f0f0", letterSpacing: "-.03em", marginBottom: 2 }}>{p.price}</div>
+              <div style={{ fontSize: 11, color: "rgba(240,240,240,.3)", marginBottom: 12 }}>{p.for}</div>
+              <ul style={{ listStyle: "none", fontSize: 11, color: "rgba(240,240,240,.5)" }}>
+                {p.feats.slice(0, 3).map((f, j) => <li key={j} style={{ marginBottom: 4 }}>✓ {f}</li>)}
+                {p.feats.length > 3 && <li style={{ color: "rgba(240,240,240,.25)" }}>+{p.feats.length - 3} weitere…</li>}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
    MAIN ADMIN APP
 ══════════════════════════════════════════════════════════ */
 export default function Admin() {
@@ -1070,6 +1199,7 @@ export default function Admin() {
           {view === "angebote" && <Angebote angebote={angebote} setAngebote={setAngebote} leads={leads} user={user} users={users} />}
           {view === "rechnungen" && <Rechnungen rechnungen={rechnungen} setRechnungen={setRechnungen} leads={leads} angebote={angebote} user={user} users={users} />}
           {view === "team" && user.role === "admin" && <Team users={users} setUsers={setUsers} />}
+          {view === "inhalte" && user.role === "admin" && <InhalteEditor />}
         </div>
       </div>
 
