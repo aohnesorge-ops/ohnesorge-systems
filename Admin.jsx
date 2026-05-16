@@ -457,6 +457,134 @@ function Prozess(){
   );
 }
 
+function Testimonials(){
+  const[ref,vis]=useInView();
+  const TESTI=[
+    {name:"Thomas K.",role:"Handwerksbetrieb, Dresden",text:"In einer Woche hatten wir eine Website die sich professionell anfühlt. Seitdem kommen Anfragen über das Formular — vorher war das null.",stars:5},
+    {name:"Sandra M.",role:"Dienstleistung, Sachsen",text:"Kein Agentur-Aufwand, kein ellenlanger Fragebogen. Ein Gespräch — eine Woche später war alles live.",stars:5},
+    {name:"Michael B.",role:"Selbstständig, Dresden",text:"Die Automation spart mir täglich 1–2 Stunden. Anfragen kommen rein, werden automatisch eingetragen und ich kriege sofort eine SMS.",stars:5},
+  ];
+  return(
+    <section className="S SD SDB"><div className="W" ref={ref}>
+      <div className="SECL"><p className="TAG">Stimmen</p></div>
+      <h2 className={`H2 fade ${vis?"vis":""}`}>Was Kunden sagen.</h2>
+      <p style={{fontSize:15,color:TF,margin:"8px 0 44px"}}>Echte Stimmen aus echten Projekten.</p>
+      <div className="G3">
+        {TESTI.map(({name,role,text,stars},i)=>(
+          <div key={i} className={`fade ${vis?"vis":""} D${i+1}`} style={{background:B3,border:`1px solid ${BR}`,borderRadius:14,padding:26}}>
+            <div style={{color:P,fontSize:13,marginBottom:14,letterSpacing:2}}>{"★".repeat(stars)}</div>
+            <p style={{fontSize:14,color:TF,lineHeight:1.75,fontStyle:"italic",marginBottom:18}}>„{text}"</p>
+            <div style={{fontSize:14,fontWeight:700,color:T}}>{name}</div>
+            <div style={{fontSize:12,color:TF,marginTop:2}}>{role}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:40,justifyContent:"center",flexWrap:"wrap",marginTop:40,paddingTop:32,borderTop:`1px solid ${BR}`}}>
+        {[["15+","Projekte"],["100%","Festpreis"],["4.9★","Bewertung"],["7 Tage","Ø Lieferzeit"]].map(([v,l])=>(
+          <div key={l} style={{textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:P,letterSpacing:"-.03em"}}>{v}</div><div style={{fontSize:11,color:TF,marginTop:3}}>{l}</div></div>
+        ))}
+      </div>
+    </div></section>
+  );
+}
+
+function Zielgruppen({to}){
+  const[ref,vis]=useInView();
+  return(
+    <section className="S"><div className="W" ref={ref}>
+      <div className="SECL"><p className="TAG">Für wen</p></div>
+      <h2 className={`H2 fade ${vis?"vis":""}`}>Für drei Zielgruppen.<br/>Fokussiert, nicht für alle.</h2>
+      <div className="G3 MT">
+        {ZIELGRUPPEN.map(({icon,title,desc,examples},i)=>(
+          <div key={i} className={`fade ${vis?"vis":""} D${i+1}`} style={{background:B3,border:`1px solid ${BR}`,borderRadius:14,padding:28}}>
+            <div style={{fontSize:28,marginBottom:16}}>{icon}</div>
+            <div style={{fontSize:17,fontWeight:700,color:T,letterSpacing:"-.02em",marginBottom:10}}>{title}</div>
+            <p style={{fontSize:14,color:TF,lineHeight:1.7,marginBottom:16}}>{desc}</p>
+            <div style={{fontSize:12,color:P,fontWeight:600,background:PD,border:`1px solid ${PB}`,borderRadius:8,padding:"6px 12px",display:"inline-block"}}>{examples}</div>
+            <button onClick={()=>to("kontakt")} className="BO" style={{width:"100%",marginTop:20,fontSize:13}}>Erstgespräch buchen</button>
+          </div>
+        ))}
+      </div>
+    </div></section>
+  );
+}
+
+function ROICalc(){
+  const[b,setB]=useState(200);const[r,setR]=useState(2);const[w,setW]=useState(500);
+  const ak=Math.round(b*r/100);const po=ak*3;const mo=(po-ak)*w;const ja=mo*12;const fmt=n=>n.toLocaleString("de-DE")+" €";
+  return(
+    <div style={{background:B3,border:`1px solid ${BR}`,borderRadius:14,padding:24}}>
+      <div style={{fontSize:12,fontWeight:700,color:P,textTransform:"uppercase",letterSpacing:".1em",marginBottom:20}}>💰 ROI-Rechner</div>
+      {[{label:"Besucher/Monat",value:b,set:setB,min:50,max:2000,step:10,unit:""},{label:"Anfragen-Rate",value:r,set:setR,min:1,max:20,step:1,unit:"%"},{label:"Ø Auftragswert",value:w,set:setW,min:100,max:5000,step:50,unit:"€"}].map(({label,value,set,min,max,step,unit})=>(
+        <div key={label} style={{marginBottom:18}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:8,color:TF}}><span>{label}</span><span style={{color:P,fontFamily:"monospace",fontWeight:700}}>{value.toLocaleString("de-DE")}{unit}</span></div>
+          <input type="range" min={min} max={max} step={step} value={value} onChange={e=>set(Number(e.target.value))}/>
+        </div>
+      ))}
+      <div style={{background:B2,border:`1px solid ${PB}`,borderRadius:10,padding:18,marginTop:4}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}}>
+          {[["Aktuell",ak,TF],["Mit Website (3×)",po,GR],["Verlust/Monat",fmt(mo),RE],["Verlust/Jahr",fmt(ja),P]].map(([l,v,c])=>(
+            <div key={l}><div style={{fontSize:10,color:TF,textTransform:"uppercase",letterSpacing:".06em",marginBottom:3}}>{l}</div><div style={{fontSize:l==="Verlust/Jahr"?20:15,fontWeight:800,color:c,letterSpacing:"-.02em"}}>{v}</div></div>
+          ))}
+        </div>
+        <p style={{fontSize:11,color:TF,lineHeight:1.6}}>Ab 890 € — amortisiert sich nach der ersten zusätzlichen Anfrage.</p>
+      </div>
+    </div>
+  );
+}
+
+function AutomationSection(){
+  const[ref,vis]=useInView(0.05);const[active,setActive]=useState(0);const[after,setAfter]=useState(false);
+  const ASTEPS=[{icon:"📨",label:"Anfrage eingeht",desc:"Formular, E-Mail oder WhatsApp"},{icon:"⚡",label:"Webhook ausgelöst",desc:"Make/Zapier verarbeitet sofort"},{icon:"📋",label:"CRM aktualisiert",desc:"Kunde automatisch angelegt"},{icon:"💬",label:"WhatsApp gesendet",desc:"Sie werden benachrichtigt"},{icon:"✅",label:"Kunde bestätigt",desc:"Automatische Bestätigungsmail"}];
+  useEffect(()=>{if(!vis)return;setActive(0);const t=setInterval(()=>setActive(a=>(a+1)%ASTEPS.length),900);return()=>clearInterval(t);},[vis]);
+  const rows=after?BA.map(r=>({time:r.time,tx:r.a,dur:r.ad,ok:true})):BA.map(r=>({time:r.time,tx:r.b,dur:r.bd,ok:false}));
+  const c=after?GR:RE;
+  return(
+    <section className="S SD SDB"><div className="W" ref={ref}>
+      <div className="SECL"><p className="TAG">Automation</p></div>
+      <h2 className="H2">Eine Anfrage rein.<br/>Alles passiert automatisch.</h2>
+      <p style={{fontSize:15,color:TF,margin:"8px 0 44px"}}>In unter 60 Sekunden. Ohne dass Sie etwas tun müssen.</p>
+      <div style={{display:"flex",alignItems:"flex-start",overflowX:"auto",paddingBottom:8,marginBottom:28}}>
+        {ASTEPS.map(({icon,label,desc},i)=>(
+          <div key={i} style={{display:"flex",alignItems:"flex-start"}}>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,minWidth:96,opacity:vis?1:0,transform:vis?"none":"translateY(14px)",transition:`all .4s ${i*.1}s`}}>
+              <div style={{width:52,height:52,borderRadius:"50%",background:active===i?PD:B3,border:`2px solid ${active===i?P:BR}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,transition:"all .3s"}}>{icon}</div>
+              <div style={{fontSize:12,fontWeight:700,color:active===i?P:T,textAlign:"center",transition:"color .3s"}}>{label}</div>
+              <div style={{fontSize:10,color:TF,textAlign:"center",lineHeight:1.4,maxWidth:86}}>{desc}</div>
+            </div>
+            {i<ASTEPS.length-1&&<div style={{display:"flex",alignItems:"center",padding:"0 6px",marginTop:25}}><div style={{width:32,height:2,background:active>i?P:BR,transition:"background .3s"}}/></div>}
+          </div>
+        ))}
+      </div>
+      <div style={{background:PD,border:`1px solid ${PB}`,borderRadius:8,padding:"10px 16px",fontSize:12,color:TF,marginBottom:32}}>⚡ Vollautomatisch — in unter 60 Sekunden, während Sie schlafen.</div>
+      <div className="G2">
+        <div style={{background:B3,border:`1px solid ${BR}`,borderRadius:14,overflow:"hidden"}}>
+          <div style={{display:"flex"}}>
+            {[false,true].map(isAfter=>(
+              <button key={String(isAfter)} onClick={()=>setAfter(isAfter)} style={{flex:1,padding:"12px 16px",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,background:after===isAfter?(isAfter?"#16a34a":"#dc2626"):"transparent",color:after===isAfter?"#fff":"rgba(240,240,240,.3)",transition:"all .2s"}}>
+                {isAfter?"✓ Mit Automation":"✗ Ohne — manuell"}
+              </button>
+            ))}
+          </div>
+          <div style={{padding:"18px 22px"}}>
+            {rows.map(({time,tx,dur,ok},i)=>(
+              <div key={i} style={{display:"flex",gap:14,marginBottom:13,alignItems:"center"}}>
+                <span style={{fontSize:12,fontFamily:"monospace",color:TF,flexShrink:0,width:40,fontWeight:600}}>{time}</span>
+                <span style={{flex:1,fontSize:13,color:ok?"rgba(240,240,240,.75)":TD,lineHeight:1.5}}>{tx}</span>
+                <span style={{fontSize:12,fontWeight:700,color:ok?GR:RE,flexShrink:0,minWidth:36,textAlign:"right"}}>{dur}</span>
+              </div>
+            ))}
+            <div style={{marginTop:14,padding:"11px 14px",borderRadius:8,background:`${c}12`,border:`1px solid ${c}30`,textAlign:"center",fontSize:13,fontWeight:700,color:c}}>
+              {after?"✓ ~1 Minute. Automatisch.":"✗ ~90 Minuten pro Anfrage — alles manuell"}
+            </div>
+          </div>
+        </div>
+        <ROICalc/>
+      </div>
+    </div></section>
+  );
+}
+
 function FAQ(){
   const[open,setOpen]=useState(null);
   return(
@@ -732,10 +860,13 @@ export default function App(){
         </div>
       </div></section>
       <Leistungen to={to}/>
+      <AutomationSection/>
       <Preise to={to}/>
       <Prozess/>
       <FAQ/>
+      <Zielgruppen to={to}/>
       <ProjektGalerie/>
+      <Testimonials/>
       <UeberMich to={to}/>
       <section style={{background:"linear-gradient(180deg,#0e0e0e 0%,#060606 100%)",borderTop:`1px solid ${PB}`,padding:"112px 0",textAlign:"center"}}>
         <div className="W" style={{maxWidth:620}}>
