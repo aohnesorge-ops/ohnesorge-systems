@@ -1,890 +1,1216 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
-const P="#8b5cf6",PD="rgba(139,92,246,.1)",PB="rgba(139,92,246,.25)";
-const BG="#060606",B2="#0e0e0e",B3="#151515",BR="rgba(255,255,255,.06)",BR2="rgba(255,255,255,.12)";
-const T="#f2f2f2",TD="rgba(242,242,242,.5)",TF="rgba(242,242,242,.25)";
-const GR="#4ade80",RE="#f87171";
-
-const DEF_PAKETE=[
-  {id:"starter",name:"Starter",price:"890 €",priceNote:"Einmalig, kein Abo",for:"Handwerker · Gastronomen · Lokale Dienstleister",featured:false,feats:["5-seitige Website nach Ihren Wünschen","Mobile-optimiert & schnell","Kontaktformular + Google Maps","Impressum & Datenschutz","3 Monate Support"]},
-  {id:"professional",name:"Professional",price:"1.490 €",priceNote:"Einmalig, kein Abo",for:"Unternehmen die online wachsen wollen",featured:true,feats:["Alles aus Starter","Bis 10 Seiten + Blog","SEO-Optimierung vollständig","Google Analytics","1 KI-Automation kostenlos dazu","6 Monate Support"]},
-  {id:"automation",name:"Automation Only",price:"490 €",priceNote:"Einmalig, kein Abo",for:"Sie haben bereits eine Website",featured:false,feats:["1 vollständiger Automation-Workflow","E-Mail / WhatsApp / CRM","Einrichtung & Einweisung","30 Tage Nachbetreuung"]},
-];
-function lsGet(k,d){try{const v=localStorage.getItem("os_content_"+k);return v?JSON.parse(v):d;}catch{return d;}}
-
-const WORDS=["eine neue Website","mehr Kundenanfragen","automatisierte Prozesse","messbares Wachstum","eine starke Online-Präsenz"];
-const MARKET_STATS=[
-  {num:"73%",label:"der Kunden prüfen eine Website bevor sie anrufen"},
-  {num:"8 Sek.",label:"— so lange haben Sie um online zu überzeugen"},
-  {num:"3×",label:"mehr Anfragen mit einer optimierten Website"},
-  {num:"890 €",label:"Einstiegspreis — Festpreis, kein Nachschlag"},
-];
-const BA=[
-  {time:"08:30",b:"Telefonanfrage — alles von Hand notieren",bd:"15 Min",a:"Formular-Anfrage eingeht — System reagiert sofort",ad:"0 Min"},
-  {time:"09:00",b:"Angebot manuell schreiben und per E-Mail senden",bd:"45 Min",a:"CRM aktualisiert, Angebot automatisch generiert",ad:"Auto"},
-  {time:"10:30",b:"Termin in Kalender manuell eintragen",bd:"10 Min",a:"Kalender gebucht, Bestätigung an Kunden",ad:"Auto"},
-  {time:"14:00",b:"Nachfass-E-Mail nicht vergessen — wieder von Hand",bd:"20 Min",a:"Sie erhalten WhatsApp — Anfrage vollständig erledigt",ad:"2 Min"},
-];
-const CSTEPS=[
-  {q:"Wo verliert Ihre Website aktuell Kunden?",multi:true,opts:[{i:"📱",l:"Schlechte Mobile-Ansicht"},{i:"🐢",l:"Lädt zu langsam"},{i:"🔍",l:"Nicht bei Google auffindbar"},{i:"📞",l:"Kein klares Kontaktformular"},{i:"💀",l:"Design veraltet"},{i:"🤷",l:"Ich weiß es nicht"}]},
-  {q:"Wie viele Anfragen kommen monatlich über Ihre Website?",multi:false,opts:[{i:"0️⃣",l:"Keine — kein Formular vorhanden"},{i:"1️⃣",l:"1–3 Anfragen"},{i:"📬",l:"4–10 Anfragen"},{i:"🚀",l:"Mehr als 10 Anfragen"}]},
-  {q:"Was ist Ihr wichtigstes Ziel in den nächsten 90 Tagen?",multi:false,opts:[{i:"📈",l:"Mehr Kundenanfragen generieren"},{i:"⚡",l:"Prozesse automatisieren & Zeit sparen"},{i:"🏆",l:"Professioneller online auftreten"},{i:"🎯",l:"Alles davon"}]},
-];
-const LEISTUNGEN=[
-  {icon:"🌐",name:"Webdesign",tag:"Ab 890 € · Festpreis",desc:"Keine Templates. Kein Baukastensystem. Eine Website die Ihre Persönlichkeit zeigt und Besucher in Anfragen verwandelt.",highlights:["Fertig in 7 Werktagen","Mobile-first, SEO-ready","Kontaktformular + Tracking"]},
-  {icon:"⚡",name:"KI-Automatisierung",tag:"Ab 490 € · Festpreis",desc:"Anfragen rein, alles läuft automatisch. CRM, WhatsApp, E-Mail — verbunden und abgearbeitet ohne einen Finger zu rühren.",highlights:["Spart 1–3 Std. täglich","Make & Zapier Workflows","Einrichtung + Einweisung"]},
-  {icon:"🎯",name:"Kombi-Paket",tag:"Ab 1.290 € · Festpreis",desc:"Website + Automation aus einer Hand. Kein Medienbruch. Der schnellste Weg zum ROI.",highlights:["Alles aus einer Hand","6 Monate Support","Günstigster ROI"]},
-];
-const ZIELGRUPPEN=[
-  {icon:"🔨",title:"Handwerk & Gewerbe",desc:"Sie sind gut in Ihrem Handwerk — aber online fast unsichtbar. Das ändern wir in einer Woche.",examples:"Elektriker · Maler · Sanitär · Schreiner"},
-  {icon:"🍕",title:"Gastronomie & Retail",desc:"Ihre Gäste buchen online. Ihre Konkurrenz auch. Eine saubere Präsenz entscheidet über die Wahl.",examples:"Restaurants · Cafés · Einzelhandel · Hotels"},
-  {icon:"💼",title:"Dienstleistung & Beratung",desc:"Vertrauen beginnt online. Eine professionelle Website konvertiert Besucher in zahlende Kunden.",examples:"Steuerberater · Coaching · Agenturen · Freelancer"},
-];
-const FAQS=[
-  ["Wie lange dauert eine Website?","5–7 Werktage nach vollständiger Materialübergabe (Logo, Fotos, Texte). Mit Briefing an Tag 1 sind Sie an Tag 7 live."],
-  ["Gibt es versteckte Kosten?","Nein. Festpreis bedeutet Festpreis. Hosting läuft direkt beim Anbieter (8–15 €/Monat) — kein laufender Vertrag mit mir."],
-  ["Können Sie meine alte Website übernehmen?","Oft ja — klären wir im Erstgespräch in 5 Minuten."],
-  ["Was genau ist KI-Automatisierung?","Formular-Anfrage kommt rein → CRM aktualisiert → WhatsApp an Sie → Bestätigung an Kunden. Alles ohne Ihr Zutun."],
-  ["Arbeiten Sie auch außerhalb Dresdens?","Ja — Webdesign und Automation laufen vollständig remote."],
-  ["Was kostet das Erstgespräch?","Nichts. 30 Minuten, kostenlos, kein Kaufdruck."],
-];
-const PROJEKTE=[
-  {name:"Walczak & Gogsch",cat:"Rechtsanwaltskanzlei · Dresden",tag:"Website + KI-Fallanalyse",desc:"Kanzleiwebsite mit KI-Tool zur Falleinschätzung. Mandanten qualifizieren sich selbst.",tech:["React","Claude API","Lovable"],result:"Weniger unqualifizierte Erstgespräche",c1:"#060d1c",c2:"#60a5fa",days:6},
-  {name:"Benedikt Tillmann",cat:"Rechtsanwalt · Personal Brand",tag:"Personal Brand Website",desc:"Klare, helle Anwaltswebsite. Vertrauen durch Persönlichkeit statt Stockfotos.",tech:["React","Lovable"],result:"Mehr direkte Mandatsanfragen",c1:"#0d1a0d",c2:"#4ade80",days:5},
-  {name:"Rollimaus e.V.",cat:"Kinderverein · Dresden",tag:"Pro-Bono · Spendenrechner",desc:"Vereinswebsite mit interaktivem Spendenrechner und Bus-Kauf-Fortschrittsanzeige.",tech:["React","Donation Slider"],result:"Spendenfortschritt transparent sichtbar",c1:"#1a0a14",c2:"#f472b6",days:7},
-];
-const LEGAL={
-  impressum:{title:"Impressum",body:"Angaben gemäß § 5 TMG\n\nAlexandros Ohnesorge\nBergmannstraße 64\n01309 Dresden\n\nE-Mail: alex.ohnesorge@icloud.com\n\nGemäß § 19 UStG wird keine Umsatzsteuer berechnet.\nSteuernummer: [folgt] · Finanzamt Dresden"},
-  datenschutz:{title:"Datenschutz",body:"1. Verantwortlicher\nAlexandros Ohnesorge, Bergmannstraße 64, 01309 Dresden\n\n2. Erhobene Daten\nKontaktformulardaten und Server-Logs.\n\n3. KI-Tools\nTexte in Check/Chat werden an Anthropic API übermittelt.\n\n4. Rechte\nAuskunft, Berichtigung, Löschung (Art. 15–21 DSGVO).\nKontakt: alex.ohnesorge@icloud.com"},
-  agb:{title:"AGB",body:"§ 1 Geltungsbereich\nAlexandros Ohnesorge, Bergmannstraße 64, 01309 Dresden.\n\n§ 2 Vergütung\n50% Anzahlung, 50% nach Fertigstellung. Zahlungsziel: 14 Tage.\n\n§ 3 Lieferzeit\n5–7 Werktage nach vollständiger Materialübergabe.\n\n§ 4 Gerichtsstand\nDresden. Deutsches Recht."},
+/* ══════════════════════════════════════════════════════════
+   BUSINESS CONFIG
+══════════════════════════════════════════════════════════ */
+const BIZ = {
+  name: "Alexandros Ohnesorge",
+  firma: "Ohnesorge — Webdesign & KI-Automatisierung",
+  adresse: "Bergmannstraße 64",
+  plz: "01309 Dresden",
+  email: "alex.ohnesorge@icloud.com",
+  web: "ohnesorge-systems.vercel.app",
+  steuer: "[Steuernummer folgt]",
+  iban: "[IBAN folgt]",
+  bank: "[Bank folgt]",
+  zahlungsziel: 14,
 };
 
-function useTypewriter(words,speed=80){
-  const[text,setText]=useState("");const[wi,setWi]=useState(0);const[del,setDel]=useState(false);const p=useRef(null);
-  useEffect(()=>{const cur=words[wi];const t=setTimeout(()=>{if(!del){if(text.length<cur.length)setText(cur.slice(0,text.length+1));else p.current=setTimeout(()=>setDel(true),2000);}else{if(text.length>0)setText(cur.slice(0,text.length-1));else{setDel(false);setWi((wi+1)%words.length);}}},del?40:speed);return()=>{clearTimeout(t);clearTimeout(p.current);};},[text,wi,del]);return text;
-}
-function useInView(th=0.1){
-  const ref=useRef(null);const[vis,setVis]=useState(false);
-  useEffect(()=>{const ob=new IntersectionObserver(([e])=>{if(e.isIntersecting)setVis(true);},{threshold:th});if(ref.current)ob.observe(ref.current);return()=>ob.disconnect();},[]);return[ref,vis];
-}
-function useActiveSection(ids){
-  const[active,setActive]=useState("");
-  useEffect(()=>{const obs=ids.map(id=>{const el=document.getElementById(id);if(!el)return null;const ob=new IntersectionObserver(([e])=>{if(e.isIntersecting)setActive(id);},{threshold:0.25});ob.observe(el);return ob;}).filter(Boolean);return()=>obs.forEach(o=>o.disconnect());},[]);return active;
+const GOLD = "#e8c547";
+const GOLD_DIM = "rgba(232,197,71,0.12)";
+const GOLD_BORDER = "rgba(232,197,71,0.3)";
+const BG = "#070707";
+const BG2 = "#0f0f0f";
+const BG3 = "#161616";
+const BORDER = "rgba(255,255,255,0.07)";
+const TEXT = "#f0f0f0";
+const TEXT_DIM = "rgba(240,240,240,0.5)";
+const TEXT_FAINT = "rgba(240,240,240,0.25)";
+const GREEN = "#4ade80";
+const RED = "#f87171";
+const BLUE = "#60a5fa";
+
+/* ══════════════════════════════════════════════════════════
+   INITIAL USERS
+══════════════════════════════════════════════════════════ */
+const INITIAL_USERS = [
+  { id: "admin", name: "Alexandros Ohnesorge", username: "alex", password: "Dresden50*", role: "admin" },
+];
+
+const PIPELINE_COLS = ["Lead", "Angebot", "Verhandlung", "Gewonnen", "Rechnung"];
+
+const LEISTUNGEN_TEMPLATES = [
+  { name: "Website Starter", beschreibung: "5-seitige Website, Mobile-optimiert, Kontaktformular, Impressum & Datenschutz, 3 Monate Support" },
+  { name: "Website Professional", beschreibung: "Bis 10 Seiten, SEO-Optimierung, Blog/News-Bereich, Google Analytics, 6 Monate Support" },
+  { name: "KI-Automatisierung", beschreibung: "1 vollständiger Workflow, E-Mail/WhatsApp/CRM-Anbindung, Einrichtung & Einweisung, 30 Tage Nachbetreuung" },
+  { name: "Kombi-Paket", beschreibung: "Website + Automation aus einer Hand, 6 Monate Support, Schnellster ROI" },
+  { name: "Individuelles Angebot", beschreibung: "" },
+];
+
+/* ══════════════════════════════════════════════════════════
+   LOCAL STORAGE HELPERS
+══════════════════════════════════════════════════════════ */
+const ls = {
+  get: (key, fallback = null) => { try { const v = localStorage.getItem("os_admin_" + key); return v ? JSON.parse(v) : fallback; } catch { return fallback; } },
+  set: (key, val) => { try { localStorage.setItem("os_admin_" + key, JSON.stringify(val)); } catch {} },
+};
+
+/* ══════════════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════════════ */
+const fmt = (n) => Number(n).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+const today = () => new Date().toISOString().split("T")[0];
+const dateDE = (iso) => { if (!iso) return "—"; const [y, m, d] = iso.split("-"); return `${d}.${m}.${y}`; };
+const uid = () => Math.random().toString(36).slice(2, 10);
+const rechnungsNr = () => { const n = ls.get("rechnungs_counter", 1); ls.set("rechnungs_counter", n + 1); return `RE-2026-${String(n).padStart(3, "0")}`; };
+const angebotsNr = () => { const n = ls.get("angebots_counter", 1); ls.set("angebots_counter", n + 1); return `AN-2026-${String(n).padStart(3, "0")}`; };
+
+/* ══════════════════════════════════════════════════════════
+   PDF GENERATOR
+══════════════════════════════════════════════════════════ */
+function generatePDF({ type, nummer, kunde, leistung, preis, datum, faellig, signatureDataUrl, verkaeufer, notizen }) {
+  const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"/>
+  <title>${type} ${nummer}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;color:#1a1a1a;padding:48px;max-width:800px;margin:0 auto}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:48px;padding-bottom:24px;border-bottom:2px solid #1a1a1a}
+    .logo{font-size:22px;font-weight:800;letter-spacing:-0.03em}
+    .logo span{color:#e8c547}
+    .biz-info{font-size:11px;color:#666;text-align:right;line-height:1.7}
+    .doc-title{font-size:28px;font-weight:800;margin-bottom:8px;letter-spacing:-0.02em}
+    .doc-meta{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:40px}
+    .meta-block h4{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#999;margin-bottom:8px}
+    .meta-block p{font-size:13px;line-height:1.7;color:#1a1a1a}
+    .meta-block p strong{font-weight:600}
+    table{width:100%;border-collapse:collapse;margin-bottom:32px}
+    th{background:#1a1a1a;color:#fff;padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+    td{padding:12px 14px;border-bottom:1px solid #eee;font-size:13px;vertical-align:top}
+    tr:last-child td{border-bottom:none}
+    .total-row td{font-weight:700;font-size:15px;background:#f9f9f9;border-top:2px solid #1a1a1a}
+    .total-price{color:#1a1a1a;font-size:18px;font-weight:800}
+    .sig-section{margin-top:48px;padding-top:24px;border-top:1px solid #eee}
+    .sig-section h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#999;margin-bottom:16px}
+    .sig-img{max-width:240px;height:80px;object-fit:contain;border-bottom:1px solid #1a1a1a;padding-bottom:4px}
+    .sig-name{font-size:12px;color:#666;margin-top:6px}
+    .footer{margin-top:48px;padding-top:16px;border-top:1px solid #eee;font-size:10px;color:#999;line-height:1.7}
+    .badge{display:inline-block;background:#e8c547;color:#1a1a1a;font-size:10px;font-weight:700;padding:3px 10px;border-radius:3px;text-transform:uppercase;letter-spacing:.06em}
+    .iban-block{margin-top:16px;background:#f5f5f5;padding:12px 16px;border-radius:4px;font-size:12px}
+    .iban-block strong{display:block;margin-bottom:4px}
+    @media print{body{padding:24px}.no-print{display:none}}
+  </style>
+  </head><body>
+  <div class="header">
+    <div><div class="logo">Ohnesorge<span>.</span></div><div style="font-size:11px;color:#666;margin-top:4px;">Webdesign & KI-Automatisierung</div></div>
+    <div class="biz-info">
+      <strong>${BIZ.name}</strong><br>
+      ${BIZ.adresse}<br>${BIZ.plz}<br>
+      ${BIZ.email}<br>${BIZ.web}
+    </div>
+  </div>
+
+  <div class="doc-title">${type === "Rechnung" ? "Rechnung" : "Angebot"}</div>
+  <div style="margin-bottom:32px"><span class="badge">${nummer}</span></div>
+
+  <div class="doc-meta">
+    <div class="meta-block">
+      <h4>Auftraggeber</h4>
+      <p><strong>${kunde.name}</strong><br>
+      ${kunde.firma ? kunde.firma + "<br>" : ""}
+      ${kunde.email ? kunde.email + "<br>" : ""}
+      ${kunde.telefon || ""}
+      </p>
+    </div>
+    <div class="meta-block">
+      <h4>Dokument-Details</h4>
+      <p>
+        <strong>${type === "Rechnung" ? "Rechnungsdatum" : "Angebotsdatum"}:</strong> ${dateDE(datum)}<br>
+        ${type === "Rechnung" ? `<strong>Fällig bis:</strong> ${dateDE(faellig)}<br>` : `<strong>Gültig bis:</strong> ${dateDE(faellig)}<br>`}
+        <strong>Betreuer:</strong> ${verkaeufer || BIZ.name}
+      </p>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Leistung</th><th>Beschreibung</th><th style="text-align:right">Betrag</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>${leistung.name}</strong></td>
+        <td style="color:#666">${leistung.beschreibung || "Gemäß Vereinbarung"}</td>
+        <td style="text-align:right;font-weight:600">${preis ? fmt(preis) : "Auf Anfrage"}</td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr class="total-row">
+        <td colspan="2">Gesamtbetrag (gemäß § 19 UStG keine MwSt.)</td>
+        <td style="text-align:right" class="total-price">${preis ? fmt(preis) : "Auf Anfrage"}</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  ${notizen ? `<div style="background:#f9f9f9;padding:16px;border-radius:4px;margin-bottom:24px;font-size:13px;color:#666"><strong>Hinweise:</strong> ${notizen}</div>` : ""}
+
+  ${type === "Rechnung" ? `
+  <div class="iban-block">
+    <strong>Bankverbindung</strong>
+    IBAN: ${BIZ.iban}<br>
+    ${BIZ.bank}<br>
+    Verwendungszweck: ${nummer}
+  </div>
+  <p style="font-size:12px;color:#666;margin-top:12px">Bitte überweisen Sie den Betrag innerhalb von ${BIZ.zahlungsziel} Tagen auf das oben genannte Konto.</p>
+  ` : `<p style="font-size:12px;color:#666">Dieses Angebot ist 30 Tage gültig. Bei Fragen stehe ich Ihnen gerne zur Verfügung.</p>`}
+
+  ${signatureDataUrl ? `
+  <div class="sig-section">
+    <h4>Unterschrift Auftraggeber</h4>
+    <img class="sig-img" src="${signatureDataUrl}" alt="Unterschrift"/>
+    <div class="sig-name">${kunde.name} · ${dateDE(datum)}</div>
+  </div>` : ""}
+
+  <div class="footer">
+    ${BIZ.name} · ${BIZ.adresse} · ${BIZ.plz} · ${BIZ.email}<br>
+    Steuernummer: ${BIZ.steuer} · Gemäß § 19 UStG wird keine Umsatzsteuer berechnet (Kleinunternehmerregelung).
+  </div>
+
+  <div class="no-print" style="margin-top:32px;text-align:center">
+    <button onclick="window.print()" style="background:#1a1a1a;color:#fff;border:none;padding:12px 32px;font-size:14px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit">
+      Als PDF speichern / Drucken
+    </button>
+  </div>
+  </body></html>`;
+
+  const win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => win.print(), 600);
 }
 
-const CSS=`
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');
-*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
-body{font-family:'DM Sans',sans-serif;background:#060606;color:#f2f2f2;overflow-x:hidden;-webkit-font-smoothing:antialiased}
-::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:#060606}::-webkit-scrollbar-thumb{background:#8b5cf6;border-radius:2px}
-@keyframes fadeUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-.fade{opacity:0;transform:translateY(28px);transition:opacity .6s ease,transform .6s ease}
-.fade.vis{opacity:1;transform:none}
-.d1{transition-delay:.07s}.d2{transition-delay:.14s}.d3{transition-delay:.21s}
-.W{max-width:1160px;margin:0 auto;padding:0 48px}
-.S{padding:112px 0}.SD{background:#0e0e0e}.SDB{border-top:1px solid rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.05)}
-.TAG{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(242,242,242,.35);margin-bottom:0}
-.H2{font-size:clamp(30px,4vw,52px);font-weight:800;letter-spacing:-.035em;line-height:1.06;color:#f2f2f2}
-.MT{margin-top:56px}
-.G3G{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-.G2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-.G2L{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:start}
-.G2U{display:grid;grid-template-columns:380px 1fr;gap:80px;align-items:center}
-.G2C{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start}
-.B{background:#8b5cf6;color:#fff;border:none;border-radius:10px;padding:14px 28px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;display:inline-flex;align-items:center;gap:8px;justify-content:center;text-decoration:none}
-.B:hover{background:#7c3aed;transform:translateY(-1px)}
-.BO{background:transparent;color:#f2f2f2;border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:13px 26px;font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s;display:inline-flex;align-items:center;gap:8px}
-.BO:hover{border-color:rgba(255,255,255,.38);background:rgba(255,255,255,.04)}
-.BF{width:100%;justify-content:center}
-.INP{background:#151515;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:12px 16px;color:#f2f2f2;font-size:14px;font-family:inherit;outline:none;width:100%;transition:border-color .15s}
-.INP:focus{border-color:#8b5cf6}
-input[type=range]{width:100%;appearance:none;height:3px;background:#1c1c1c;border-radius:2px;outline:none;cursor:pointer}
-input[type=range]::-webkit-slider-thumb{appearance:none;width:18px;height:18px;background:#8b5cf6;border-radius:50%;cursor:pointer;box-shadow:0 0 0 4px rgba(139,92,246,.15)}
-.NAV{position:fixed;top:0;left:0;right:0;z-index:150;height:68px;display:flex;align-items:center;transition:all .3s}
-.NAV.SC{background:rgba(6,6,6,.96);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.05)}
-.LOGO{font-size:20px;font-weight:800;letter-spacing:-.045em;cursor:pointer;flex-shrink:0}
-.NL{font-size:13px;font-weight:500;cursor:pointer;color:rgba(242,242,242,.5);white-space:nowrap;padding:4px 0;border-bottom:1.5px solid transparent;transition:all .15s}
-.NL:hover{color:#f2f2f2}.NL.ACT{color:#8b5cf6;border-bottom-color:#8b5cf6}
-.HAM{display:none;background:none;border:1px solid rgba(255,255,255,.15);border-radius:8px;cursor:pointer;color:#f2f2f2;padding:8px 10px}
-.COPT{background:rgba(255,255,255,.03);border:1.5px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 16px;cursor:pointer;font-family:inherit;font-size:14px;color:rgba(242,242,242,.7);display:flex;align-items:center;gap:10px;text-align:left;transition:all .15s;width:100%}
-.COPT:hover{border-color:rgba(139,92,246,.4);background:rgba(139,92,246,.05)}
-.COPT.SEL{border-color:#8b5cf6;background:rgba(139,92,246,.1);color:#fff}
-.LC{background:#0e0e0e;border:1px solid rgba(255,255,255,.06);padding:36px;position:relative;transition:border-color .2s}
-.LC:hover{border-color:rgba(255,255,255,.15)}
-.LC.FEAT{border-color:rgba(139,92,246,.3);background:linear-gradient(160deg,rgba(139,92,246,.06) 0%,#0e0e0e 60%)}
-.PROJ{background:#0e0e0e;border:1px solid rgba(255,255,255,.06);border-radius:14px;overflow:hidden;cursor:pointer;transition:all .2s}
-.PROJ:hover{border-color:rgba(255,255,255,.18);transform:translateY(-3px)}
-.FAQIT{border-bottom:1px solid rgba(255,255,255,.06)}
-.FAQB{width:100%;background:none;border:none;padding:22px 0;display:flex;align-items:center;justify-content:space-between;gap:20px;cursor:pointer;font-family:inherit;font-size:16px;font-weight:600;color:#f2f2f2;text-align:left;transition:color .15s}
-.FAQB:hover{color:#8b5cf6}
-.SECL{display:flex;align-items:center;gap:16px;margin-bottom:48px}
-.SECL::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.06)}
-.CHATW{position:fixed;bottom:76px;right:20px;width:320px;max-height:460px;background:#0e0e0e;border:1px solid rgba(255,255,255,.1);border-radius:16px;display:flex;flex-direction:column;z-index:300;box-shadow:0 32px 80px rgba(0,0,0,.6);animation:fadeUp .25s ease}
-@media(max-width:1024px){.G2L{grid-template-columns:1fr;gap:48px}.G2U{grid-template-columns:1fr;gap:48px}.G2C{grid-template-columns:1fr;gap:48px}}
-@media(max-width:900px){
-  .G3G{grid-template-columns:1fr 1fr}.NLS{display:none!important}.NCTA{display:none!important}
-  .HAM{display:flex!important;margin-left:auto}.W{padding:0 24px}.S{padding:80px 0}
-  .STAT-GRD{grid-template-columns:1fr 1fr!important}
-}
-@media(max-width:640px){
-  .G3G{grid-template-columns:1fr}.G2{grid-template-columns:1fr}
-  .HBTNS{flex-direction:column!important;align-items:stretch!important}
-  .STAT-GRD{grid-template-columns:1fr 1fr!important}
-  .RGO{grid-template-columns:1fr!important}.RADIOG{grid-template-columns:1fr!important}
-}
-@media(max-width:480px){.W{padding:0 20px}}
-`;
+/* ══════════════════════════════════════════════════════════
+   SIGNATURE PAD COMPONENT
+══════════════════════════════════════════════════════════ */
+function SignaturePad({ onSave, onCancel }) {
+  const canvasRef = useRef(null);
+  const drawing = useRef(false);
+  const lastPos = useRef(null);
 
-function Nav({scrollY,to}){
-  const[open,setOpen]=useState(false);
-  const active=useActiveSection(["hero","check","leistungen","preise","projekte","kontakt"]);
-  const links=[["check","Website-Check"],["leistungen","Leistungen"],["preise","Preise"],["projekte","Projekte"],["kontakt","Kontakt"]];
-  return(
-    <nav className={`NAV ${scrollY>40?"SC":""}`}>
-      <div className="W" style={{display:"flex",alignItems:"center",gap:32,width:"100%"}}>
-        <div onClick={()=>to("hero")} className="LOGO">Ohnesorge<span style={{color:P}}>.</span></div>
-        <div className="NLS" style={{display:"flex",gap:32,flex:1}}>
-          {links.map(([id,l])=><span key={id} onClick={()=>to(id)} className={`NL ${active===id?"ACT":""}`}>{l}</span>)}
+  const getPos = (e) => {
+    const rect = canvasRef.current.getBoundingClientRect();
+    const client = e.touches ? e.touches[0] : e;
+    return { x: client.clientX - rect.left, y: client.clientY - rect.top };
+  };
+
+  const start = (e) => { e.preventDefault(); drawing.current = true; lastPos.current = getPos(e); };
+  const end = () => { drawing.current = false; lastPos.current = null; };
+  const draw = (e) => {
+    e.preventDefault();
+    if (!drawing.current) return;
+    const ctx = canvasRef.current.getContext("2d");
+    const pos = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(lastPos.current.x, lastPos.current.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.strokeStyle = "#1a1a1a";
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.stroke();
+    lastPos.current = pos;
+  };
+
+  const clear = () => {
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+  };
+
+  const save = () => {
+    const dataUrl = canvasRef.current.toDataURL("image/png");
+    onSave(dataUrl);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.85)", zIndex: 600, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 28, maxWidth: 560, width: "100%" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: TEXT }}>Digitale Unterschrift</div>
+            <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 2 }}>Mit Finger oder Maus unterschreiben</div>
+          </div>
+          <button onClick={onCancel} style={{ background: "none", border: "none", color: TEXT_DIM, cursor: "pointer", fontSize: 20 }}>✕</button>
         </div>
-        <button onClick={()=>to("kontakt")} className="B NCTA" style={{padding:"10px 22px",fontSize:13,borderRadius:8}}>Jetzt anfragen ✦</button>
-        <button onClick={()=>setOpen(o=>!o)} className="HAM">
-          <svg width="18" height="14" viewBox="0 0 18 14" fill="none"><path d={open?"M1 1L17 13M17 1L1 13":"M0 1h18M0 7h18M0 13h18"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+        <div style={{ background: "#fff", borderRadius: 10, border: `2px solid ${BORDER}`, marginBottom: 16, overflow: "hidden" }}>
+          <canvas ref={canvasRef} width={500} height={160} style={{ display: "block", width: "100%", touchAction: "none", cursor: "crosshair" }}
+            onMouseDown={start} onMouseMove={draw} onMouseUp={end} onMouseLeave={end}
+            onTouchStart={start} onTouchMove={draw} onTouchEnd={end} />
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={clear} style={{ background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_DIM, borderRadius: 8, padding: "10px 18px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Löschen</button>
+          <button onClick={onCancel} style={{ background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_DIM, borderRadius: 8, padding: "10px 18px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Abbrechen</button>
+          <button onClick={save} style={{ flex: 1, background: GOLD, color: "#070707", border: "none", borderRadius: 8, padding: "10px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            ✓ Unterschrift übernehmen
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   LOGIN SCREEN
+══════════════════════════════════════════════════════════ */
+function LoginScreen({ onLogin }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const login = () => {
+    const users = ls.get("users", INITIAL_USERS);
+    const user = users.find(u => u.username === username.trim() && u.password === password);
+    if (user) { onLogin(user); setError(""); }
+    else setError("Benutzername oder Passwort falsch.");
+  };
+
+  const inp = { background: BG3, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "12px 16px", color: TEXT, fontSize: 14, fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box" };
+
+  return (
+    <div style={{ minHeight: "100vh", background: BG, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: 20, padding: 40, maxWidth: 400, width: "100%" }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", color: TEXT }}>Ohnesorge<span style={{ color: GOLD }}>.</span></div>
+          <div style={{ fontSize: 13, color: TEXT_DIM, marginTop: 6 }}>Admin-Bereich · Bitte einloggen</div>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Benutzername</label>
+          <input style={inp} value={username} onChange={e => setUsername(e.target.value)} placeholder="benutzername" onKeyDown={e => e.key === "Enter" && login()} autoFocus
+            onFocus={e => e.currentTarget.style.borderColor = GOLD} onBlur={e => e.currentTarget.style.borderColor = BORDER} />
+        </div>
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Passwort</label>
+          <input style={inp} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && login()}
+            onFocus={e => e.currentTarget.style.borderColor = GOLD} onBlur={e => e.currentTarget.style.borderColor = BORDER} />
+        </div>
+        {error && <div style={{ background: "rgba(248,113,113,.08)", border: "1px solid rgba(248,113,113,.2)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: RED, marginBottom: 16 }}>{error}</div>}
+        <button onClick={login} style={{ width: "100%", background: GOLD, color: "#070707", border: "none", borderRadius: 8, padding: "13px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          Einloggen →
         </button>
       </div>
-      {open&&(
-        <div style={{position:"fixed",inset:0,top:68,background:"rgba(6,6,6,.98)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:32,zIndex:149}}>
-          {links.map(([id,l])=><span key={id} onClick={()=>{to(id);setOpen(false);}} style={{fontSize:26,fontWeight:700,color:T,cursor:"pointer"}}>{l}</span>)}
-          <button onClick={()=>{to("kontakt");setOpen(false);}} className="B" style={{padding:"16px 40px",fontSize:17,marginTop:8}}>Jetzt anfragen ✦</button>
-        </div>
-      )}
-    </nav>
+    </div>
   );
 }
 
-function Hero({to}){
-  const text=useTypewriter(WORDS);
-  return(
-    <section id="hero" style={{minHeight:"100vh",display:"flex",alignItems:"center",position:"relative",overflow:"hidden",paddingTop:68}}>
-      <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px)",backgroundSize:"64px 64px",pointerEvents:"none"}}/>
-      <div style={{position:"absolute",top:"-20%",right:"-10%",width:800,height:800,background:"radial-gradient(ellipse,rgba(139,92,246,.07) 0%,transparent 65%)",pointerEvents:"none"}}/>
-      <div className="W" style={{position:"relative",zIndex:1,paddingTop:40,paddingBottom:80,display:"flex",justifyContent:"space-between",alignItems:"center",gap:40}}>
-        <div style={{maxWidth:700,flex:1}}>
-          <div style={{display:"inline-flex",alignItems:"center",gap:8,background:"rgba(74,222,128,.06)",border:"1px solid rgba(74,222,128,.2)",borderRadius:6,padding:"7px 14px",fontSize:12,fontWeight:600,color:GR,marginBottom:28,animation:"fadeUp .5s ease both"}}>
-            <div style={{width:7,height:7,borderRadius:"50%",background:GR,animation:"pulse 2s infinite"}}/>
-            Aktuell verfügbar · 2 freie Plätze im Juni
-          </div>
-          <h1 style={{fontSize:"clamp(42px,6.5vw,82px)",fontWeight:800,letterSpacing:"-.04em",lineHeight:1.03,color:T,marginBottom:24,animation:"fadeUp .5s .1s ease both"}}>
-            Ihr Unternehmen braucht<br/><span style={{color:P}}>{text}<span style={{borderRight:"2.5px solid #8b5cf6",marginLeft:1,animation:"blink 1s infinite",display:"inline-block",width:2}}> </span></span>
-          </h1>
-          <p style={{fontSize:"clamp(16px,1.8vw,19px)",color:TD,lineHeight:1.78,maxWidth:560,marginBottom:40,animation:"fadeUp .5s .2s ease both"}}>
-            Professionelle Websites und KI-Automatisierungen für lokale Unternehmen in Dresden. Festpreis. Fertig in 7 Tagen. Kein Agentur-Aufwand.
-          </p>
-          <div className="HBTNS" style={{display:"flex",gap:14,flexWrap:"wrap",animation:"fadeUp .5s .3s ease both",marginBottom:44}}>
-            <button onClick={()=>to("check")} className="B" style={{padding:"16px 32px",fontSize:16}}>Kostenloser Website-Check ✦</button>
-            <button onClick={()=>to("kontakt")} className="BO" style={{padding:"15px 28px",fontSize:16}}>Erstgespräch buchen</button>
-          </div>
-          <div style={{display:"flex",gap:24,flexWrap:"wrap",animation:"fadeUp .5s .4s ease both"}}>
-            {["✓ Fertig in 7 Tagen","✓ Festpreis garantiert","✓ Erstgespräch kostenlos"].map(t=>(
-              <span key={t} style={{fontSize:14,color:TF,display:"flex",alignItems:"center",gap:6}}><span style={{color:GR}}>{t[0]}</span>{t.slice(1)}</span>
-            ))}
-          </div>
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:3,animation:"fadeIn .8s .5s ease both",opacity:0,animationFillMode:"forwards",flexShrink:0}} className="HFC">
-          {[["7 Tage","Lieferzeit"],["890 €","Einstiegspreis"],["Festpreis","Garantiert"],["15+","Projekte"]].map(([n,l])=>(
-            <div key={l} style={{background:B2,border:`1px solid ${BR}`,borderRadius:10,padding:"14px 20px",minWidth:148}}>
-              <div style={{fontSize:20,fontWeight:800,color:T,letterSpacing:"-.03em"}}>{n}</div>
-              <div style={{fontSize:11,color:TF,marginTop:2}}>{l}</div>
-            </div>
-          ))}
-        </div>
+/* ══════════════════════════════════════════════════════════
+   SIDEBAR
+══════════════════════════════════════════════════════════ */
+function Sidebar({ view, setView, user, onLogout }) {
+  const navItems = [
+    { id: "dashboard", icon: "📊", label: "Dashboard" },
+    { id: "pipeline", icon: "🎯", label: "Pipeline" },
+    { id: "kunden", icon: "👥", label: "Kunden" },
+    { id: "angebote", icon: "📄", label: "Angebote" },
+    { id: "rechnungen", icon: "💶", label: "Rechnungen" },
+    ...(user.role === "admin" ? [{ id: "inhalte", icon: "✏️", label: "Website-Inhalte" }, { id: "team", icon: "🔐", label: "Team" }] : []),
+  ];
+
+  return (
+    <div style={{ width: 220, background: BG2, borderRight: `1px solid ${BORDER}`, display: "flex", flexDirection: "column", height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 100 }}>
+      <div style={{ padding: "24px 20px", borderBottom: `1px solid ${BORDER}` }}>
+        <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.03em", color: TEXT }}>Ohnesorge<span style={{ color: GOLD }}>.</span></div>
+        <div style={{ fontSize: 11, color: TEXT_FAINT, marginTop: 2 }}>Admin-Bereich</div>
       </div>
-      <style>{`@media(max-width:900px){.HFC{display:none!important}}`}</style>
-    </section>
-  );
-}
-
-function StatsBar(){
-  return(
-    <div className="SD" style={{borderTop:"1px solid rgba(255,255,255,.05)",borderBottom:"1px solid rgba(255,255,255,.05)"}}>
-      <div className="W STAT-GRD" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)"}}>
-        {MARKET_STATS.map(({num,label},i)=>(
-          <div key={i} style={{padding:"40px 32px",position:"relative",borderRight:i<3?"1px solid rgba(255,255,255,.05)":"none"}}>
-            <div style={{fontSize:"clamp(26px,3vw,40px)",fontWeight:800,letterSpacing:"-.04em",color:i===3?P:T,lineHeight:1,marginBottom:8}}>{num}</div>
-            <div style={{fontSize:13,color:TD,lineHeight:1.5,maxWidth:200}}>{label}</div>
-          </div>
+      <div style={{ padding: "16px 12px", flex: 1 }}>
+        {navItems.map(({ id, icon, label }) => (
+          <button key={id} onClick={() => setView(id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, border: "none", background: view === id ? GOLD_DIM : "transparent", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: view === id ? 600 : 400, color: view === id ? GOLD : TEXT_DIM, transition: "all .15s", marginBottom: 2, borderLeft: view === id ? `3px solid ${GOLD}` : "3px solid transparent", textAlign: "left" }}>
+            <span style={{ fontSize: 16 }}>{icon}</span>{label}
+          </button>
         ))}
       </div>
+      <div style={{ padding: "16px 20px", borderTop: `1px solid ${BORDER}` }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: TEXT, marginBottom: 2 }}>{user.name}</div>
+        <div style={{ fontSize: 11, color: TEXT_FAINT, marginBottom: 12 }}>{user.role === "admin" ? "Administrator" : "Verkäufer"}</div>
+        <button onClick={onLogout} style={{ width: "100%", background: "transparent", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "8px", fontSize: 12, color: TEXT_DIM, cursor: "pointer", fontFamily: "inherit" }}>Ausloggen</button>
+      </div>
     </div>
   );
 }
 
-function ProblemSection(){
-  const[ref,vis]=useInView();const[after,setAfter]=useState(false);
-  return(
-    <section className="S"><div className="W" ref={ref}>
-      <div className="G2C">
-        <div>
-          <div className="SECL"><p className="TAG">Das Problem</p></div>
-          <h2 className={`H2 fade ${vis?"vis":""}`} style={{marginBottom:20}}>
-            Täglich verlieren<br/>Unternehmen Kunden —<br/><span style={{color:P}}>ohne es zu merken.</span>
-          </h2>
-          <p style={{fontSize:16,color:TD,lineHeight:1.8,marginBottom:28}}>Eine veraltete Website, manuelle Prozesse, keine Sichtbarkeit bei Google — jeder dieser Punkte kostet Sie täglich Aufträge die an Konkurrenten gehen.</p>
-          <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-            {["🔨 Handwerk","🍕 Gastronomie","⚖️ Beratung","💅 Beauty","🏠 Immobilien","🏋️ Fitness"].map(b=>(
-              <span key={b} style={{fontSize:12,background:B3,border:`1px solid ${BR2}`,borderRadius:20,padding:"5px 12px",color:TD}}>{b}</span>
-            ))}
-          </div>
-        </div>
-        <div className={`fade ${vis?"vis":""} d2`}>
-          <div style={{display:"flex",background:B3,borderRadius:"10px 10px 0 0",overflow:"hidden"}}>
-            {[false,true].map(isAfter=>(
-              <button key={String(isAfter)} onClick={()=>setAfter(isAfter)} style={{flex:1,padding:13,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,background:after===isAfter?(isAfter?"rgba(74,222,128,.12)":"rgba(248,113,113,.12)"):"transparent",color:after===isAfter?(isAfter?GR:RE):TF,transition:"all .2s",borderBottom:`2px solid ${after===isAfter?(isAfter?GR:RE):"transparent"}`}}>
-                {isAfter?"✓ Mit Ohnesorge":"✗ Ohne Ohnesorge"}
-              </button>
-            ))}
-          </div>
-          <div style={{background:B3,borderRadius:"0 0 10px 10px",padding:20}}>
-            {BA.map(({time,b,bd,a,ad},i)=>(
-              <div key={i} style={{display:"flex",gap:12,marginBottom:i<BA.length-1?14:0,alignItems:"flex-start"}}>
-                <span style={{fontSize:11,fontFamily:"monospace",color:TF,flexShrink:0,width:40,paddingTop:1}}>{time}</span>
-                <span style={{flex:1,fontSize:13,color:TD,lineHeight:1.5}}>{after?a:b}</span>
-                <span style={{fontSize:12,fontWeight:700,color:after?GR:RE,flexShrink:0,minWidth:38,textAlign:"right"}}>{after?ad:bd}</span>
-              </div>
-            ))}
-            <div style={{marginTop:16,padding:"10px 14px",borderRadius:8,background:after?"rgba(74,222,128,.08)":"rgba(248,113,113,.08)",border:`1px solid ${after?"rgba(74,222,128,.2)":"rgba(248,113,113,.2)"}`,fontSize:13,fontWeight:700,color:after?GR:RE,textAlign:"center"}}>
-              {after?"✓ ~2 Minuten — vollautomatisch":"✗ ~90 Minuten — alles manuell, täglich"}
-            </div>
-          </div>
-          <div style={{textAlign:"right",marginTop:16,fontSize:"clamp(18px,2.5vw,26px)",fontWeight:800,color:P,letterSpacing:"-.03em"}}>→ Das ändert sich.</div>
-        </div>
-      </div>
-    </div></section>
-  );
-}
+/* ══════════════════════════════════════════════════════════
+   DASHBOARD
+══════════════════════════════════════════════════════════ */
+function Dashboard({ leads, rechnungen, user }) {
+  const myLeads = user.role === "admin" ? leads : leads.filter(l => l.verkaeufer_id === user.id);
+  const gewonnen = myLeads.filter(l => l.status === "Gewonnen" || l.status === "Rechnung");
+  const offeneRechnungen = rechnungen.filter(r => r.status === "Offen" && (user.role === "admin" || r.verkaeufer_id === user.id));
+  const umsatz = rechnungen.filter(r => r.status === "Bezahlt" && (user.role === "admin" || r.verkaeufer_id === user.id)).reduce((s, r) => s + (r.preis || 0), 0);
+  const pipeline_wert = myLeads.filter(l => l.preis && l.status !== "Rechnung").reduce((s, l) => s + (l.preis || 0), 0);
 
-function CheckTool(){
-  const[step,setStep]=useState(0);const[ans,setAns]=useState({});const[result,setResult]=useState(null);const[loading,setLoading]=useState(false);const[email,setEmail]=useState("");const[sent,setSent]=useState(false);
-  const cur=CSTEPS[step];const isMulti=cur?.multi;
-  const toggle=opt=>{
-    if(!isMulti){const next={...ans,[step]:[opt]};setAns(next);if(step<CSTEPS.length-1)setTimeout(()=>setStep(s=>s+1),280);else setTimeout(()=>run(next),280);}
-    else{const cs=ans[step]||[];const already=cs.includes(opt);setAns(prev=>({...prev,[step]:already?cs.filter(x=>x!==opt):[...cs,opt]}));}
-  };
-  const isSel=opt=>(ans[step]||[]).includes(opt);
-  const next=()=>{if(step<CSTEPS.length-1)setStep(s=>s+1);else run(ans);};
-  const run=async(a)=>{
-    setLoading(true);
-    const summary=CSTEPS.map((s,i)=>`${s.q}: ${(a[i]||[]).map(x=>x.l).join(", ")}`).join("\n");
-    try{const res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:`Webdesign-Experte.\n${summary}\nNur JSON: {"headline":"direkt max 8 Wörter","summary":"2 konkrete Sätze","problems":["P1","P2","P3"],"quickwins":["Q1","Q2","Q3"],"cta":"1 motivierender Satz"}`})});const data=await res.json();const parsed=JSON.parse((data.reply||"").replace(/```json|```/g,"").trim());setResult({...parsed});}
-    catch{setResult({headline:"Klarer Handlungsbedarf erkannt",summary:"Basierend auf Ihren Angaben gibt es konkrete Hebel die sofort wirken. Eine neue Website oder Automation wäre der logische nächste Schritt.",problems:["Website-Performance und Mobile","Zu wenige Online-Anfragen","Manuelle Prozesse kosten täglich Zeit"],quickwins:["Google My Business vollständig ausfüllen","Kontaktformular prominent platzieren","Einmal schauen was automatisierbar ist"],cta:"Lassen Sie uns in 30 Minuten schauen was bei Ihnen am schnellsten wirkt."});}
-    finally{setLoading(false);}
-  };
-  if(loading)return(<div style={{textAlign:"center",padding:"60px 0",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}><div style={{width:40,height:40,border:`3px solid ${PD}`,borderTop:`3px solid ${P}`,borderRadius:"50%",animation:"spin .7s linear infinite"}}/><p style={{fontSize:15,fontWeight:600,color:T}}>Analyse wird erstellt…</p></div>);
-  if(result)return(
-    <div style={{animation:"fadeUp .4s ease"}}>
-      <div style={{background:`linear-gradient(135deg,rgba(139,92,246,.08),rgba(139,92,246,.03))`,border:`1px solid ${PB}`,borderRadius:12,padding:"20px 24px",marginBottom:20}}>
-        <div style={{fontSize:10,fontWeight:700,color:P,letterSpacing:".12em",textTransform:"uppercase",marginBottom:8}}>Ihr persönliches Ergebnis</div>
-        <h3 style={{fontSize:20,fontWeight:800,color:T,letterSpacing:"-.02em",marginBottom:8}}>{result.headline}</h3>
-        <p style={{fontSize:14,color:TD,lineHeight:1.7}}>{result.summary}</p>
-      </div>
-      <div className="RGO" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-        <div style={{background:"rgba(248,113,113,.06)",border:"1px solid rgba(248,113,113,.18)",borderRadius:10,padding:16}}>
-          <div style={{fontSize:10,fontWeight:700,color:RE,textTransform:"uppercase",letterSpacing:".1em",marginBottom:10}}>Wo Kunden verloren gehen</div>
-          {result.problems?.map((p,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:7,fontSize:13,color:TD}}><span style={{color:RE,flexShrink:0}}>✗</span>{p}</div>)}
-        </div>
-        <div style={{background:"rgba(74,222,128,.06)",border:"1px solid rgba(74,222,128,.18)",borderRadius:10,padding:16}}>
-          <div style={{fontSize:10,fontWeight:700,color:GR,textTransform:"uppercase",letterSpacing:".1em",marginBottom:10}}>Was sofort wirkt</div>
-          {result.quickwins?.map((q,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:7,fontSize:13,color:TD}}><span style={{color:GR,flexShrink:0}}>✓</span>{q}</div>)}
-        </div>
-      </div>
-      <div style={{fontSize:14,color:TD,fontStyle:"italic",marginBottom:18,padding:"12px 16px",borderLeft:`2px solid ${P}`}}>„{result.cta}"</div>
-      {!sent?(
-        <div>
-          <div style={{fontSize:13,fontWeight:600,color:T,marginBottom:8}}>Ergebnis sichern + kostenloses Gespräch:</div>
-          <div style={{display:"flex",gap:8,marginBottom:10}}><input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="ihre@email.de" className="INP" style={{flex:1}}/><button onClick={()=>{if(email.includes("@"))setSent(true);}} className="B" style={{padding:"10px 18px",fontSize:13,borderRadius:8,whiteSpace:"nowrap"}}>Senden</button></div>
-          <div style={{textAlign:"center",fontSize:12,color:TF,margin:"8px 0"}}>— oder direkt —</div>
-          <a href="https://wa.me/49IHRE_NUMMER?text=Hallo%2C%20ich%20habe%20den%20Website-Check%20gemacht." target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"#25d366",color:"#fff",borderRadius:8,padding:11,fontSize:14,fontWeight:700,textDecoration:"none"}}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-            Direkt via WhatsApp antworten
-          </a>
-          <button onClick={()=>{setStep(0);setAns({});setResult(null);setSent(false);}} style={{background:"none",border:"none",color:TF,fontSize:12,cursor:"pointer",marginTop:12,fontFamily:"inherit",display:"block",width:"100%",textAlign:"center"}}>↩ Neue Analyse</button>
-        </div>
-      ):(
-        <div style={{textAlign:"center",padding:20,background:"rgba(74,222,128,.07)",borderRadius:10,border:"1px solid rgba(74,222,128,.2)"}}>
-          <div style={{fontSize:28,marginBottom:8}}>✓</div>
-          <div style={{fontWeight:700,color:GR}}>Ich melde mich innerhalb von 24h!</div>
-        </div>
-      )}
+  const StatCard = ({ icon, label, value, color }) => (
+    <div style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: 14, padding: "24px 20px" }}>
+      <div style={{ fontSize: 22, marginBottom: 12 }}>{icon}</div>
+      <div style={{ fontSize: 26, fontWeight: 800, color: color || TEXT, letterSpacing: "-0.03em", lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 6 }}>{label}</div>
     </div>
   );
-  return(
+
+  return (
     <div>
-      <div style={{display:"flex",gap:6,marginBottom:24}}>
-        {CSTEPS.map((_,i)=><div key={i} style={{flex:1,height:3,borderRadius:99,background:i<step?P:i===step?"rgba(139,92,246,.4)":"rgba(255,255,255,.08)",transition:"background .3s"}}/>)}
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: TEXT, letterSpacing: "-0.02em" }}>Guten Morgen, {user.name.split(" ")[0]} 👋</div>
+        <div style={{ fontSize: 14, color: TEXT_DIM, marginTop: 4 }}>Hier ist deine aktuelle Übersicht.</div>
       </div>
-      <div style={{fontSize:10,fontWeight:700,color:P,letterSpacing:".12em",textTransform:"uppercase",marginBottom:10}}>Schritt {step+1} von {CSTEPS.length}{isMulti&&" · Mehrfachauswahl"}</div>
-      <h3 style={{fontSize:18,fontWeight:800,color:T,marginBottom:20,letterSpacing:"-.02em",lineHeight:1.3}}>{cur.q}</h3>
-      <div style={{display:"flex",flexDirection:"column",gap:8}}>
-        {cur.opts.map((opt,i)=>(
-          <button key={i} onClick={()=>toggle(opt)} className={`COPT ${isSel(opt)?"SEL":""}`}>
-            <span style={{fontSize:18,flexShrink:0}}>{opt.i}</span><span style={{flex:1}}>{opt.l}</span>{isSel(opt)&&<span style={{color:P,fontWeight:700}}>✓</span>}
-          </button>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 32 }}>
+        <StatCard icon="🎯" label="Aktive Leads" value={myLeads.filter(l => l.status !== "Rechnung").length} />
+        <StatCard icon="✅" label="Abschlüsse" value={gewonnen.length} color={GREEN} />
+        <StatCard icon="💶" label="Pipeline-Wert" value={pipeline_wert ? fmt(pipeline_wert) : "—"} color={GOLD} />
+        <StatCard icon="📈" label="Umsatz (bezahlt)" value={umsatz ? fmt(umsatz) : "—"} color={BLUE} />
+      </div>
+
+      {offeneRechnungen.length > 0 && (
+        <div style={{ background: "rgba(248,113,113,.06)", border: "1px solid rgba(248,113,113,.2)", borderRadius: 14, padding: "20px 24px", marginBottom: 24 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: RED, marginBottom: 12 }}>⚠ Offene Rechnungen ({offeneRechnungen.length})</div>
+          {offeneRechnungen.map(r => (
+            <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: `1px solid rgba(248,113,113,.1)` }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: TEXT }}>{r.kunde_name}</div>
+                <div style={{ fontSize: 11, color: TEXT_DIM }}>{r.nummer} · fällig {dateDE(r.faellig)}</div>
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: RED }}>{fmt(r.preis)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: 14, padding: "20px 24px" }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: TEXT, marginBottom: 16 }}>Letzte Aktivitäten</div>
+        {myLeads.slice(-5).reverse().map(l => (
+          <div key={l.id} style={{ display: "flex", justify: "space-between", alignItems: "center", padding: "8px 0", borderBottom: `1px solid ${BORDER}` }}>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: TEXT }}>{l.name}</span>
+              <span style={{ fontSize: 12, color: TEXT_DIM, marginLeft: 8 }}>{l.leistung_name || "—"}</span>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {l.preis && <span style={{ fontSize: 12, color: GOLD, fontWeight: 600 }}>{fmt(l.preis)}</span>}
+              <span style={{ fontSize: 11, background: l.status === "Gewonnen" || l.status === "Rechnung" ? "rgba(74,222,128,.1)" : GOLD_DIM, color: l.status === "Gewonnen" || l.status === "Rechnung" ? GREEN : GOLD, padding: "2px 8px", borderRadius: 4, fontWeight: 600 }}>{l.status}</span>
+            </div>
+          </div>
         ))}
-      </div>
-      <div style={{display:"flex",gap:10,marginTop:16}}>
-        {step>0&&<button onClick={()=>setStep(s=>s-1)} style={{background:"none",border:"none",color:TF,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>← Zurück</button>}
-        {isMulti&&(ans[step]||[]).length>0&&(
-          <button onClick={next} className="B" style={{marginLeft:"auto",padding:"11px 24px",fontSize:14,borderRadius:8}}>
-            {step<CSTEPS.length-1?"Weiter →":"Analyse starten →"}
-          </button>
-        )}
+        {myLeads.length === 0 && <div style={{ fontSize: 13, color: TEXT_FAINT, textAlign: "center", padding: "20px 0" }}>Noch keine Leads. Erstelle deinen ersten in der Pipeline.</div>}
       </div>
     </div>
   );
 }
 
-function Leistungen({to}){
-  const[ref,vis]=useInView();const pakete=lsGet("pakete",DEF_PAKETE);
-  return(
-    <section id="leistungen" className="S SD SDB"><div className="W" ref={ref}>
-      <div className="SECL"><p className="TAG">Leistungen</p></div>
-      <h2 className={`H2 fade ${vis?"vis":""}`} style={{marginBottom:14}}>Was ich für Sie tue.</h2>
-      <p style={{fontSize:17,color:TD,marginBottom:56,maxWidth:520}}>Zwei Kernleistungen. Jede kann Ihr Business allein verändern — zusammen sind sie unschlagbar.</p>
-      <div className="G3G" style={{marginBottom:40}}>
-        {LEISTUNGEN.map(({icon,name,tag,desc,highlights},i)=>(
-          <div key={i} className={`LC fade ${vis?"vis":""} d${i+1}`}>
-            <div style={{fontSize:28,marginBottom:20}}>{icon}</div>
-            <div style={{fontSize:11,fontWeight:600,color:P,letterSpacing:".1em",textTransform:"uppercase",marginBottom:8}}>{tag}</div>
-            <h3 style={{fontSize:20,fontWeight:700,color:T,letterSpacing:"-.02em",marginBottom:12}}>{name}</h3>
-            <p style={{fontSize:14,color:TD,lineHeight:1.75,marginBottom:20}}>{desc}</p>
-            <div style={{borderTop:`1px solid ${BR}`,paddingTop:16,display:"flex",flexDirection:"column",gap:8}}>
-              {highlights.map(h=><div key={h} style={{fontSize:13,color:TD,display:"flex",gap:8}}><span style={{color:GR,flexShrink:0}}>✓</span>{h}</div>)}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{background:B3,border:`1px solid ${BR}`,borderRadius:2,overflow:"hidden"}}>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)"}} className="ZIELG">
-          {ZIELGRUPPEN.map(({icon,title,desc,examples},i)=>(
-            <div key={i} style={{padding:"28px 32px",borderRight:i<2?`1px solid ${BR}`:"none"}}>
-              <div style={{fontSize:24,marginBottom:12}}>{icon}</div>
-              <h4 style={{fontSize:16,fontWeight:700,color:T,marginBottom:8}}>{title}</h4>
-              <p style={{fontSize:13,color:TD,lineHeight:1.65,marginBottom:10}}>{desc}</p>
-              <div style={{fontSize:12,color:TF}}>{examples}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-      <style>{`@media(max-width:640px){.ZIELG{grid-template-columns:1fr!important}}`}</style>
-    </div></section>
-  );
-}
+/* ══════════════════════════════════════════════════════════
+   PIPELINE
+══════════════════════════════════════════════════════════ */
+function Pipeline({ leads, setLeads, user, users, onOpenLead }) {
+  const myLeads = user.role === "admin" ? leads : leads.filter(l => l.verkaeufer_id === user.id);
 
-function Preise({to}){
-  const[ref,vis]=useInView();const pakete=lsGet("pakete",DEF_PAKETE);
-  return(
-    <section id="preise" className="S"><div className="W" ref={ref}>
-      <div className="SECL"><p className="TAG">Preise</p></div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:20,marginBottom:40}}>
-        <h2 className="H2">Was Sie investieren.</h2>
-        <div style={{display:"flex",gap:0,background:B3,border:`1px solid ${BR}`,borderRadius:10,overflow:"hidden",flexShrink:0}}>
-          <div style={{padding:"12px 20px",borderRight:`1px solid ${BR}`,textAlign:"center"}}>
-            <div style={{fontSize:11,color:TF,textTransform:"uppercase",letterSpacing:".08em",marginBottom:3}}>Typische Agentur</div>
-            <div style={{fontSize:15,fontWeight:800,color:RE}}>6.000–20.000 €</div>
-            <div style={{fontSize:11,color:TF,marginTop:2}}>3–6 Monate Wartezeit</div>
-          </div>
-          <div style={{padding:"12px 20px",background:PD,textAlign:"center"}}>
-            <div style={{fontSize:11,color:P,textTransform:"uppercase",letterSpacing:".08em",marginBottom:3}}>Ohnesorge</div>
-            <div style={{fontSize:15,fontWeight:800,color:GR}}>Ab 890 €</div>
-            <div style={{fontSize:11,color:TF,marginTop:2}}>Fertig in 7 Tagen</div>
-          </div>
-        </div>
-      </div>
-      <div className="G3G" style={{alignItems:"start"}}>
-        {pakete.map(({id,name,price,priceNote,for:f,feats,featured},i)=>(
-          <div key={id||i} className={`LC fade ${vis?"vis":""} d${i+1} ${featured?"FEAT":""}`}>
-            {featured&&<div style={{position:"absolute",top:0,left:"50%",transform:"translate(-50%,-50%)",background:P,color:"#fff",fontSize:11,fontWeight:700,padding:"4px 16px",borderRadius:20,whiteSpace:"nowrap",letterSpacing:".04em"}}>Beliebteste Wahl</div>}
-            <div style={{fontSize:12,fontWeight:600,color:TF,textTransform:"uppercase",letterSpacing:".08em",marginBottom:10}}>{name}</div>
-            <div style={{fontSize:42,fontWeight:800,color:T,letterSpacing:"-.04em",lineHeight:1,marginBottom:4}}>{price}</div>
-            <div style={{fontSize:12,color:TF,marginBottom:6}}>{priceNote||"Einmalig, kein Abo"}</div>
-            <div style={{fontSize:13,color:TD,marginBottom:20,paddingBottom:20,borderBottom:`1px solid ${BR}`}}>{f}</div>
-            <ul style={{listStyle:"none",display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
-              {feats.map(feat=><li key={feat} style={{fontSize:13,color:TD,display:"flex",gap:9,alignItems:"flex-start"}}><span style={{color:GR,flexShrink:0,marginTop:1}}>✓</span>{feat}</li>)}
-            </ul>
-            <button onClick={()=>to("kontakt")} className={`${featured?"B":"BO"} BF`}>Jetzt anfragen</button>
-          </div>
-        ))}
-      </div>
-      <p style={{textAlign:"center",fontSize:12,color:TF,marginTop:20}}>Alle Preise zzgl. MwSt. · Einmalig · Kein Abo · Kein laufender Vertrag</p>
-    </div></section>
-  );
-}
+  const moveStatus = (id, status) => {
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l));
+  };
 
-function Prozess(){
-  const[ref,vis]=useInView();
-  const steps=[
-    {n:"Tag 1",t:"Erstgespräch",d:"30 Min. kostenlos. Wir klären konkret was Sie brauchen — ich gebe eine erste ehrliche Einschätzung. Kein Kaufdruck."},
-    {n:"Tag 2",t:"Angebot",d:"Am nächsten Werktag: schriftliches Festpreis-Angebot. Transparent, vollständig, ohne versteckte Posten."},
-    {n:"Tag 3–6",t:"Umsetzung",d:"Sie sehen täglich den Fortschritt. Feedback fließt sofort ein. Sie kümmern sich um nichts."},
-    {n:"Tag 7",t:"Launch & Übergabe",d:"Ihre Website ist live. Sie erhalten alle Zugänge, eine Anleitung und 3 Monate Support inklusive."},
-  ];
-  return(
-    <section className="S SD SDB"><div className="W" ref={ref}>
-      <div className="SECL"><p className="TAG">Ablauf</p></div>
-      <h2 className="H2" style={{marginBottom:56}}>Von der Anfrage zur fertigen Website — in einer Woche.</h2>
-      <div style={{position:"relative"}}>
-        <div style={{position:"absolute",left:27,top:0,bottom:0,width:1,background:`linear-gradient(to bottom,${P},rgba(139,92,246,.08))`}}/>
-        <div style={{display:"flex",flexDirection:"column",gap:0}}>
-          {steps.map(({n,t,d},i)=>(
-            <div key={i} className={`fade ${vis?"vis":""} d${i+1}`} style={{display:"flex",gap:24,paddingBottom:i<steps.length-1?44:0}}>
-              <div style={{width:54,height:54,borderRadius:"50%",background:B3,border:`2px solid ${PB}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0,position:"relative",zIndex:1}}>
-                <span style={{fontSize:9,fontWeight:700,color:P,letterSpacing:".04em",textTransform:"uppercase"}}>{n.split(" ")[0]}</span>
-                <span style={{fontSize:11,fontWeight:800,color:P}}>{n.split(" ")[1]}</span>
-              </div>
-              <div style={{paddingTop:12}}>
-                <h3 style={{fontSize:17,fontWeight:700,color:T,marginBottom:6}}>{t}</h3>
-                <p style={{fontSize:14,color:TD,lineHeight:1.7,maxWidth:480}}>{d}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div></section>
-  );
-}
+  const deleteLead = (id) => {
+    if (!confirm("Lead wirklich löschen?")) return;
+    setLeads(prev => prev.filter(l => l.id !== id));
+  };
 
-function Testimonials(){
-  const[ref,vis]=useInView();
-  const TESTI=[
-    {name:"Thomas K.",role:"Handwerksbetrieb, Dresden",text:"In einer Woche hatten wir eine Website die sich professionell anfühlt. Seitdem kommen Anfragen über das Formular — vorher war das null.",stars:5},
-    {name:"Sandra M.",role:"Dienstleistung, Sachsen",text:"Kein Agentur-Aufwand, kein ellenlanger Fragebogen. Ein Gespräch — eine Woche später war alles live.",stars:5},
-    {name:"Michael B.",role:"Selbstständig, Dresden",text:"Die Automation spart mir täglich 1–2 Stunden. Anfragen kommen rein, werden automatisch eingetragen und ich kriege sofort eine SMS.",stars:5},
-  ];
-  return(
-    <section className="S SD SDB"><div className="W" ref={ref}>
-      <div className="SECL"><p className="TAG">Stimmen</p></div>
-      <h2 className={`H2 fade ${vis?"vis":""}`}>Was Kunden sagen.</h2>
-      <p style={{fontSize:15,color:TF,margin:"8px 0 44px"}}>Echte Stimmen aus echten Projekten.</p>
-      <div className="G3">
-        {TESTI.map(({name,role,text,stars},i)=>(
-          <div key={i} className={`fade ${vis?"vis":""} D${i+1}`} style={{background:B3,border:`1px solid ${BR}`,borderRadius:14,padding:26}}>
-            <div style={{color:P,fontSize:13,marginBottom:14,letterSpacing:2}}>{"★".repeat(stars)}</div>
-            <p style={{fontSize:14,color:TF,lineHeight:1.75,fontStyle:"italic",marginBottom:18}}>„{text}"</p>
-            <div style={{fontSize:14,fontWeight:700,color:T}}>{name}</div>
-            <div style={{fontSize:12,color:TF,marginTop:2}}>{role}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{display:"flex",gap:40,justifyContent:"center",flexWrap:"wrap",marginTop:40,paddingTop:32,borderTop:`1px solid ${BR}`}}>
-        {[["15+","Projekte"],["100%","Festpreis"],["4.9★","Bewertung"],["7 Tage","Ø Lieferzeit"]].map(([v,l])=>(
-          <div key={l} style={{textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:P,letterSpacing:"-.03em"}}>{v}</div><div style={{fontSize:11,color:TF,marginTop:3}}>{l}</div></div>
-        ))}
-      </div>
-    </div></section>
-  );
-}
+  const gesamtwert = myLeads.filter(l => l.preis).reduce((s, l) => s + (l.preis || 0), 0);
 
-function Zielgruppen({to}){
-  const[ref,vis]=useInView();
-  return(
-    <section className="S"><div className="W" ref={ref}>
-      <div className="SECL"><p className="TAG">Für wen</p></div>
-      <h2 className={`H2 fade ${vis?"vis":""}`}>Für drei Zielgruppen.<br/>Fokussiert, nicht für alle.</h2>
-      <div className="G3 MT">
-        {ZIELGRUPPEN.map(({icon,title,desc,examples},i)=>(
-          <div key={i} className={`fade ${vis?"vis":""} D${i+1}`} style={{background:B3,border:`1px solid ${BR}`,borderRadius:14,padding:28}}>
-            <div style={{fontSize:28,marginBottom:16}}>{icon}</div>
-            <div style={{fontSize:17,fontWeight:700,color:T,letterSpacing:"-.02em",marginBottom:10}}>{title}</div>
-            <p style={{fontSize:14,color:TF,lineHeight:1.7,marginBottom:16}}>{desc}</p>
-            <div style={{fontSize:12,color:P,fontWeight:600,background:PD,border:`1px solid ${PB}`,borderRadius:8,padding:"6px 12px",display:"inline-block"}}>{examples}</div>
-            <button onClick={()=>to("kontakt")} className="BO" style={{width:"100%",marginTop:20,fontSize:13}}>Erstgespräch buchen</button>
-          </div>
-        ))}
-      </div>
-    </div></section>
-  );
-}
-
-function ROICalc(){
-  const[b,setB]=useState(200);const[r,setR]=useState(2);const[w,setW]=useState(500);
-  const ak=Math.round(b*r/100);const po=ak*3;const mo=(po-ak)*w;const ja=mo*12;const fmt=n=>n.toLocaleString("de-DE")+" €";
-  return(
-    <div style={{background:B3,border:`1px solid ${BR}`,borderRadius:14,padding:24}}>
-      <div style={{fontSize:12,fontWeight:700,color:P,textTransform:"uppercase",letterSpacing:".1em",marginBottom:20}}>💰 ROI-Rechner</div>
-      {[{label:"Besucher/Monat",value:b,set:setB,min:50,max:2000,step:10,unit:""},{label:"Anfragen-Rate",value:r,set:setR,min:1,max:20,step:1,unit:"%"},{label:"Ø Auftragswert",value:w,set:setW,min:100,max:5000,step:50,unit:"€"}].map(({label,value,set,min,max,step,unit})=>(
-        <div key={label} style={{marginBottom:18}}>
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:8,color:TF}}><span>{label}</span><span style={{color:P,fontFamily:"monospace",fontWeight:700}}>{value.toLocaleString("de-DE")}{unit}</span></div>
-          <input type="range" min={min} max={max} step={step} value={value} onChange={e=>set(Number(e.target.value))}/>
-        </div>
-      ))}
-      <div style={{background:B2,border:`1px solid ${PB}`,borderRadius:10,padding:18,marginTop:4}}>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}}>
-          {[["Aktuell",ak,TF],["Mit Website (3×)",po,GR],["Verlust/Monat",fmt(mo),RE],["Verlust/Jahr",fmt(ja),P]].map(([l,v,c])=>(
-            <div key={l}><div style={{fontSize:10,color:TF,textTransform:"uppercase",letterSpacing:".06em",marginBottom:3}}>{l}</div><div style={{fontSize:l==="Verlust/Jahr"?20:15,fontWeight:800,color:c,letterSpacing:"-.02em"}}>{v}</div></div>
-          ))}
-        </div>
-        <p style={{fontSize:11,color:TF,lineHeight:1.6}}>Ab 890 € — amortisiert sich nach der ersten zusätzlichen Anfrage.</p>
-      </div>
-    </div>
-  );
-}
-
-function AutomationSection(){
-  const[ref,vis]=useInView(0.05);const[active,setActive]=useState(0);const[after,setAfter]=useState(false);
-  const ASTEPS=[{icon:"📨",label:"Anfrage eingeht",desc:"Formular, E-Mail oder WhatsApp"},{icon:"⚡",label:"Webhook ausgelöst",desc:"Make/Zapier verarbeitet sofort"},{icon:"📋",label:"CRM aktualisiert",desc:"Kunde automatisch angelegt"},{icon:"💬",label:"WhatsApp gesendet",desc:"Sie werden benachrichtigt"},{icon:"✅",label:"Kunde bestätigt",desc:"Automatische Bestätigungsmail"}];
-  useEffect(()=>{if(!vis)return;setActive(0);const t=setInterval(()=>setActive(a=>(a+1)%ASTEPS.length),900);return()=>clearInterval(t);},[vis]);
-  const rows=after?BA.map(r=>({time:r.time,tx:r.a,dur:r.ad,ok:true})):BA.map(r=>({time:r.time,tx:r.b,dur:r.bd,ok:false}));
-  const c=after?GR:RE;
-  return(
-    <section className="S SD SDB"><div className="W" ref={ref}>
-      <div className="SECL"><p className="TAG">Automation</p></div>
-      <h2 className="H2">Eine Anfrage rein.<br/>Alles passiert automatisch.</h2>
-      <p style={{fontSize:15,color:TF,margin:"8px 0 44px"}}>In unter 60 Sekunden. Ohne dass Sie etwas tun müssen.</p>
-      <div style={{display:"flex",alignItems:"flex-start",overflowX:"auto",paddingBottom:8,marginBottom:28}}>
-        {ASTEPS.map(({icon,label,desc},i)=>(
-          <div key={i} style={{display:"flex",alignItems:"flex-start"}}>
-            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,minWidth:96,opacity:vis?1:0,transform:vis?"none":"translateY(14px)",transition:`all .4s ${i*.1}s`}}>
-              <div style={{width:52,height:52,borderRadius:"50%",background:active===i?PD:B3,border:`2px solid ${active===i?P:BR}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,transition:"all .3s"}}>{icon}</div>
-              <div style={{fontSize:12,fontWeight:700,color:active===i?P:T,textAlign:"center",transition:"color .3s"}}>{label}</div>
-              <div style={{fontSize:10,color:TF,textAlign:"center",lineHeight:1.4,maxWidth:86}}>{desc}</div>
-            </div>
-            {i<ASTEPS.length-1&&<div style={{display:"flex",alignItems:"center",padding:"0 6px",marginTop:25}}><div style={{width:32,height:2,background:active>i?P:BR,transition:"background .3s"}}/></div>}
-          </div>
-        ))}
-      </div>
-      <div style={{background:PD,border:`1px solid ${PB}`,borderRadius:8,padding:"10px 16px",fontSize:12,color:TF,marginBottom:32}}>⚡ Vollautomatisch — in unter 60 Sekunden, während Sie schlafen.</div>
-      <div className="G2">
-        <div style={{background:B3,border:`1px solid ${BR}`,borderRadius:14,overflow:"hidden"}}>
-          <div style={{display:"flex"}}>
-            {[false,true].map(isAfter=>(
-              <button key={String(isAfter)} onClick={()=>setAfter(isAfter)} style={{flex:1,padding:"12px 16px",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,background:after===isAfter?(isAfter?"#16a34a":"#dc2626"):"transparent",color:after===isAfter?"#fff":"rgba(240,240,240,.3)",transition:"all .2s"}}>
-                {isAfter?"✓ Mit Automation":"✗ Ohne — manuell"}
-              </button>
-            ))}
-          </div>
-          <div style={{padding:"18px 22px"}}>
-            {rows.map(({time,tx,dur,ok},i)=>(
-              <div key={i} style={{display:"flex",gap:14,marginBottom:13,alignItems:"center"}}>
-                <span style={{fontSize:12,fontFamily:"monospace",color:TF,flexShrink:0,width:40,fontWeight:600}}>{time}</span>
-                <span style={{flex:1,fontSize:13,color:ok?"rgba(240,240,240,.75)":TD,lineHeight:1.5}}>{tx}</span>
-                <span style={{fontSize:12,fontWeight:700,color:ok?GR:RE,flexShrink:0,minWidth:36,textAlign:"right"}}>{dur}</span>
-              </div>
-            ))}
-            <div style={{marginTop:14,padding:"11px 14px",borderRadius:8,background:`${c}12`,border:`1px solid ${c}30`,textAlign:"center",fontSize:13,fontWeight:700,color:c}}>
-              {after?"✓ ~1 Minute. Automatisch.":"✗ ~90 Minuten pro Anfrage — alles manuell"}
-            </div>
-          </div>
-        </div>
-        <ROICalc/>
-      </div>
-    </div></section>
-  );
-}
-
-function FAQ(){
-  const[open,setOpen]=useState(null);
-  return(
-    <section className="S"><div style={{maxWidth:760,margin:"0 auto",padding:"0 48px"}}>
-      <div className="SECL"><p className="TAG">Häufige Fragen</p></div>
-      <h2 className="H2" style={{marginBottom:40}}>Alles klar?</h2>
-      {FAQS.map(([q,a],i)=>(
-        <div key={i} className="FAQIT">
-          <button onClick={()=>setOpen(open===i?null:i)} className="FAQB">
-            {q}<span style={{color:TF,fontSize:22,transform:open===i?"rotate(45deg)":"none",transition:"transform .2s",flexShrink:0,lineHeight:1}}>+</span>
-          </button>
-          {open===i&&<p style={{fontSize:14,color:TD,lineHeight:1.78,paddingBottom:20,animation:"fadeUp .2s ease"}}>{a}</p>}
-        </div>
-      ))}
-    </div></section>
-  );
-}
-
-function ProjektGalerie(){
-  const[open,setOpen]=useState(null);const[ref,vis]=useInView();
-  return(
-    <section id="projekte" className="S SD SDB"><div className="W" ref={ref}>
-      <div className="SECL"><p className="TAG">Referenzen</p></div>
-      <h2 className="H2" style={{marginBottom:10}}>Projekte aus Dresden.</h2>
-      <p style={{fontSize:16,color:TD,marginBottom:48}}>Echte Kunden. Messbare Ergebnisse. Alle in unter einer Woche geliefert.</p>
-      <div className="G3G">
-        {PROJEKTE.map((p,i)=>(
-          <div key={i} onClick={()=>setOpen(p)} className={`PROJ fade ${vis?"vis":""} d${i+1}`}>
-            <div style={{height:170,background:`linear-gradient(135deg,${p.c1},${p.c2}28)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,position:"relative"}}>
-              <div style={{position:"absolute",top:12,right:12,background:"rgba(74,222,128,.12)",border:"1px solid rgba(74,222,128,.25)",borderRadius:20,padding:"3px 10px",fontSize:10,fontWeight:700,color:GR}}>Live ✓</div>
-              <div style={{fontSize:11,color:"rgba(255,255,255,.4)"}}>{p.cat}</div>
-              <div style={{fontSize:19,fontWeight:800,color:"#fff"}}>{p.name}</div>
-              <div style={{fontSize:11,color:p.c2,background:`${p.c2}18`,border:`1px solid ${p.c2}35`,borderRadius:20,padding:"3px 10px"}}>{p.tag}</div>
-            </div>
-            <div style={{padding:"20px 22px"}}>
-              <p style={{fontSize:13,color:TD,lineHeight:1.65,marginBottom:10}}>{p.desc}</p>
-              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>{p.tech.map(t=><span key={t} style={{fontSize:11,background:B3,border:`1px solid ${BR}`,borderRadius:4,padding:"2px 8px",color:TF}}>{t}</span>)}</div>
-              <div style={{fontSize:12,color:P,fontWeight:600}}>→ {p.result}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-    {open&&(
-      <div onClick={()=>setOpen(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(10px)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-        <div onClick={e=>e.stopPropagation()} style={{background:B2,border:`1px solid ${BR2}`,borderRadius:16,maxWidth:500,width:"100%",overflow:"hidden",animation:"fadeUp .25s ease"}}>
-          <div style={{height:180,background:`linear-gradient(135deg,${open.c1},${open.c2}33)`,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
-            <button onClick={()=>setOpen(null)} style={{position:"absolute",top:14,right:14,background:"rgba(255,255,255,.1)",border:"none",borderRadius:"50%",width:32,height:32,cursor:"pointer",color:T,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-            <div style={{textAlign:"center"}}><div style={{fontSize:13,color:"rgba(255,255,255,.4)"}}>{open.cat}</div><div style={{fontSize:22,fontWeight:800,color:"#fff"}}>{open.name}</div></div>
-          </div>
-          <div style={{padding:28}}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:18}}>
-              {[["Lieferzeit",`${open.days} Tage`],["Status","Live ✓"],["Ergebnis",open.result]].map(([l,v])=>(
-                <div key={l} style={{background:B3,borderRadius:8,padding:"10px 12px"}}><div style={{fontSize:10,color:TF,textTransform:"uppercase",marginBottom:3}}>{l}</div><div style={{fontSize:12,fontWeight:700,color:T}}>{v}</div></div>
-              ))}
-            </div>
-            <p style={{fontSize:14,color:TD,lineHeight:1.7}}>{open.desc}</p>
-          </div>
-        </div>
-      </div>
-    )}
-    </section>
-  );
-}
-
-function UeberMich({to}){
-  const[ref,vis]=useInView();
-  return(
-    <section className="S"><div className="W" ref={ref}>
-      <div className={`G2U fade ${vis?"vis":""}`}>
-        <div style={{display:"flex",justifyContent:"center"}}>
-          <div style={{background:B2,border:`1px solid ${BR}`,borderRadius:20,aspectRatio:"1",maxWidth:360,width:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,position:"relative"}}>
-            <div style={{width:88,height:88,borderRadius:"50%",background:PD,border:`1.5px solid ${PB}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30,fontWeight:800,color:P}}>AO</div>
-            <div style={{fontSize:13,color:TF,fontFamily:"monospace"}}>Foto folgt</div>
-            <div style={{position:"absolute",bottom:-14,right:-14,background:B2,border:`1px solid ${BR2}`,borderRadius:10,padding:"8px 14px",display:"flex",alignItems:"center",gap:8,fontSize:13,fontWeight:600}}>📍 Dresden</div>
-          </div>
-        </div>
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
         <div>
-          <div className="SECL"><p className="TAG">Über mich</p></div>
-          <h2 className="H2" style={{marginBottom:20}}>Ich bin Alexandros Ohnesorge.</h2>
-          <p style={{fontSize:16,color:TD,lineHeight:1.85,marginBottom:16}}>Ich mache Websites und KI-Automatisierungen für lokale Unternehmen in Dresden und Sachsen — schnell, direkt, zum Festpreis.</p>
-          <p style={{fontSize:16,color:TD,lineHeight:1.85,marginBottom:28}}>Kein Agentur-Betrieb mit Projektmanagern und Wartelisten. Eine Person, die Ihr Projekt von Anfang bis Ende selbst umsetzt.</p>
-          <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:32}}>
-            {[["⚡","Webdesign mit Lovable"],["🤖","Automation mit Make & Zapier"],["🎓","KI-Schulungen → Ohnesorge.KI"]].map(([ic,l])=>(
-              <div key={l} style={{background:B3,border:`1px solid ${BR}`,borderRadius:8,padding:"9px 14px",fontSize:13,color:TD,display:"flex",gap:8}}><span>{ic}</span>{l}</div>
-            ))}
-          </div>
-          <button onClick={()=>to("kontakt")} className="B" style={{padding:"13px 28px",fontSize:15}}>Direkt Kontakt aufnehmen</button>
+          <div style={{ fontSize: 22, fontWeight: 800, color: TEXT, letterSpacing: "-0.02em" }}>Sales Pipeline</div>
+          <div style={{ fontSize: 13, color: TEXT_DIM, marginTop: 4 }}>Pipeline-Wert: <span style={{ color: GOLD, fontWeight: 700 }}>{fmt(gesamtwert)}</span></div>
         </div>
+        <button onClick={() => onOpenLead(null)} style={{ background: GOLD, color: "#070707", border: "none", borderRadius: 8, padding: "11px 22px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 8 }}>
+          + Neuer Lead
+        </button>
       </div>
-    </div></section>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12, overflowX: "auto" }}>
+        {PIPELINE_COLS.map(col => {
+          const colLeads = myLeads.filter(l => l.status === col);
+          const colWert = colLeads.filter(l => l.preis).reduce((s, l) => s + (l.preis || 0), 0);
+          return (
+            <div key={col}>
+              <div style={{ marginBottom: 12, padding: "0 4px" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: TEXT_DIM }}>{col}</div>
+                <div style={{ fontSize: 11, color: TEXT_FAINT, marginTop: 2 }}>{colLeads.length} Leads{colWert ? ` · ${fmt(colWert)}` : ""}</div>
+              </div>
+              <div style={{ background: "rgba(255,255,255,.02)", borderRadius: 10, padding: 8, minHeight: 200 }}>
+                {colLeads.map(lead => {
+                  const vk = users.find(u => u.id === lead.verkaeufer_id);
+                  return (
+                    <div key={lead.id} style={{ background: BG3, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "12px", marginBottom: 8, cursor: "pointer", transition: "border-color .15s" }}
+                      onMouseOver={e => e.currentTarget.style.borderColor = GOLD_BORDER} onMouseOut={e => e.currentTarget.style.borderColor = BORDER}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: TEXT, flex: 1 }}>{lead.name}</div>
+                        <button onClick={(e) => { e.stopPropagation(); deleteLead(lead.id); }} style={{ background: "none", border: "none", color: TEXT_FAINT, cursor: "pointer", fontSize: 14, padding: 0, lineHeight: 1 }}>×</button>
+                      </div>
+                      {lead.firma && <div style={{ fontSize: 11, color: TEXT_DIM, marginBottom: 4 }}>{lead.firma}</div>}
+                      {lead.leistung_name && <div style={{ fontSize: 11, color: TEXT_DIM, marginBottom: 6 }}>{lead.leistung_name}</div>}
+                      {lead.preis && <div style={{ fontSize: 13, fontWeight: 700, color: GOLD, marginBottom: 8 }}>{fmt(lead.preis)}</div>}
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                        <button onClick={() => onOpenLead(lead)} style={{ fontSize: 10, background: GOLD_DIM, border: `1px solid ${GOLD_BORDER}`, color: GOLD, borderRadius: 4, padding: "3px 8px", cursor: "pointer", fontFamily: "inherit" }}>Öffnen</button>
+                        {PIPELINE_COLS.filter(c => c !== col).map(c => (
+                          <button key={c} onClick={() => moveStatus(lead.id, c)} style={{ fontSize: 10, background: "rgba(255,255,255,.04)", border: `1px solid ${BORDER}`, color: TEXT_FAINT, borderRadius: 4, padding: "3px 6px", cursor: "pointer", fontFamily: "inherit" }}>→ {c}</button>
+                        ))}
+                      </div>
+                      {vk && user.role === "admin" && <div style={{ fontSize: 10, color: TEXT_FAINT, marginTop: 8 }}>👤 {vk.name}</div>}
+                    </div>
+                  );
+                })}
+                {colLeads.length === 0 && <div style={{ textAlign: "center", padding: "24px 8px", fontSize: 12, color: TEXT_FAINT }}>Leer</div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
-function Kontakt(){
-  const[form,setForm]=useState({name:"",email:"",firma:"",service:"",msg:""});const[sent,setSent]=useState(false);const[sending,setSending]=useState(false);
-  const set=(k,v)=>setForm(p=>({...p,[k]:v}));
-  const submit=async()=>{if(!form.name||!form.email||!form.msg)return;setSending(true);await new Promise(r=>setTimeout(r,800));setSent(true);setSending(false);};
-  return(
-    <section id="kontakt" className="S SD SDB"><div className="W">
-      <div className="G2L">
-        <div>
-          <div className="SECL"><p className="TAG">Kontakt</p></div>
-          <h2 className="H2" style={{marginBottom:16}}>Schreiben Sie mir direkt.</h2>
-          <p style={{fontSize:16,color:TD,lineHeight:1.8,marginBottom:32,maxWidth:360}}>Kein Formular-Dschungel. Kein Chatbot. Ich antworte persönlich — innerhalb von 24 Stunden.</p>
-          <div style={{display:"flex",flexDirection:"column",gap:16,marginBottom:28}}>
-            {[["📧","alex.ohnesorge@icloud.com"],["📍","Dresden, Sachsen"],["⏱","Antwort innerhalb von 24h"]].map(([ic,tx])=>(
-              <div key={tx} style={{display:"flex",alignItems:"center",gap:14,fontSize:15,color:TD}}><span style={{fontSize:20,width:32}}>{ic}</span>{tx}</div>
-            ))}
-          </div>
-          <a href="https://wa.me/49IHRE_NUMMER" target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:10,background:"#25d366",color:"#fff",borderRadius:10,padding:"13px 24px",fontSize:15,fontWeight:700,textDecoration:"none"}}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-            WhatsApp schreiben
-          </a>
+/* ══════════════════════════════════════════════════════════
+   LEAD MODAL (New / Edit)
+══════════════════════════════════════════════════════════ */
+function LeadModal({ lead, user, users, onSave, onClose, onCreateAngebot, onSignature }) {
+  const isNew = !lead;
+  const [form, setForm] = useState(lead || {
+    id: uid(), name: "", firma: "", email: "", telefon: "", leistung_name: "", leistung_beschreibung: "", preis: "", status: "Lead", verkaeufer_id: user.id, notizen: "", erstellt: today(),
+  });
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const inp = { background: BG3, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 14px", color: TEXT, fontSize: 13, fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box", transition: "border-color .15s" };
+  const focus = e => e.currentTarget.style.borderColor = GOLD;
+  const blur = e => e.currentTarget.style.borderColor = BORDER;
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.8)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: 20, maxWidth: 600, width: "100%", maxHeight: "90vh", overflow: "auto" }}>
+        <div style={{ padding: "24px 28px", borderBottom: `1px solid ${BORDER}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: TEXT }}>{isNew ? "Neuer Lead" : "Lead bearbeiten"}</div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: TEXT_DIM, cursor: "pointer", fontSize: 20 }}>✕</button>
         </div>
-        <div style={{background:B3,border:`1px solid ${BR}`,borderRadius:16,padding:36}}>
-          {sent?(
-            <div style={{textAlign:"center",padding:"48px 0"}}>
-              <div style={{fontSize:52,marginBottom:14}}>✓</div>
-              <h3 style={{fontSize:22,fontWeight:800,color:GR,marginBottom:8}}>Nachricht erhalten!</h3>
-              <p style={{fontSize:15,color:TD}}>Ich melde mich persönlich innerhalb von 24h.</p>
+        <div style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Name *</label>
+              <input style={inp} value={form.name} onChange={e => set("name", e.target.value)} placeholder="Max Mustermann" onFocus={focus} onBlur={blur} />
             </div>
-          ):(
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Firma</label>
+              <input style={inp} value={form.firma || ""} onChange={e => set("firma", e.target.value)} placeholder="Musterfirma GmbH" onFocus={focus} onBlur={blur} />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>E-Mail</label>
+              <input style={inp} type="email" value={form.email || ""} onChange={e => set("email", e.target.value)} placeholder="max@firma.de" onFocus={focus} onBlur={blur} />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Telefon</label>
+              <input style={inp} value={form.telefon || ""} onChange={e => set("telefon", e.target.value)} placeholder="+49 351 ..." onFocus={focus} onBlur={blur} />
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Leistung</label>
+            <select style={{ ...inp, cursor: "pointer" }} value={form.leistung_name || ""} onChange={e => { const t = LEISTUNGEN_TEMPLATES.find(t => t.name === e.target.value); set("leistung_name", e.target.value); if (t?.beschreibung) set("leistung_beschreibung", t.beschreibung); }} onFocus={focus} onBlur={blur}>
+              <option value="">— Bitte wählen —</option>
+              {LEISTUNGEN_TEMPLATES.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Leistungsbeschreibung</label>
+            <textarea style={{ ...inp, resize: "vertical", minHeight: 70 }} value={form.leistung_beschreibung || ""} onChange={e => set("leistung_beschreibung", e.target.value)} placeholder="Beschreibung der Leistung..." onFocus={focus} onBlur={blur} />
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Preis (€) — frei festlegen</label>
+              <input style={inp} type="number" value={form.preis || ""} onChange={e => set("preis", e.target.value ? Number(e.target.value) : "")} placeholder="z.B. 1490" onFocus={focus} onBlur={blur} />
+              <div style={{ fontSize: 11, color: TEXT_FAINT, marginTop: 4 }}>Leer lassen wenn noch offen</div>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Status</label>
+              <select style={{ ...inp, cursor: "pointer" }} value={form.status} onChange={e => set("status", e.target.value)} onFocus={focus} onBlur={blur}>
+                {PIPELINE_COLS.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {user.role === "admin" && (
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Verkäufer</label>
+              <select style={{ ...inp, cursor: "pointer" }} value={form.verkaeufer_id} onChange={e => set("verkaeufer_id", e.target.value)} onFocus={focus} onBlur={blur}>
+                {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+            </div>
+          )}
+
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Wiedervorlage / Nächster Kontakt</label>
+            <input style={inp} type="date" value={form.wiedervorlage || ""} onChange={e => set("wiedervorlage", e.target.value)} onFocus={focus} onBlur={blur} />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Notizen</label>
+            <textarea style={{ ...inp, resize: "vertical", minHeight: 80 }} value={form.notizen || ""} onChange={e => set("notizen", e.target.value)} placeholder="Gesprächsnotizen, Besonderheiten..." onFocus={focus} onBlur={blur} />
+          </div>
+        </div>
+
+        <div style={{ padding: "16px 28px 24px", borderTop: `1px solid ${BORDER}`, display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button onClick={() => onSave(form)} style={{ background: GOLD, color: "#070707", border: "none", borderRadius: 8, padding: "11px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Speichern</button>
+          {!isNew && form.name && (
             <>
-              <div className="G2" style={{marginBottom:14}}>
-                <div><label style={{fontSize:12,fontWeight:600,color:TD,display:"block",marginBottom:7}}>Name *</label><input className="INP" value={form.name} onChange={e=>set("name",e.target.value)} placeholder="Max Mustermann"/></div>
-                <div><label style={{fontSize:12,fontWeight:600,color:TD,display:"block",marginBottom:7}}>E-Mail *</label><input className="INP" type="email" value={form.email} onChange={e=>set("email",e.target.value)} placeholder="max@firma.de"/></div>
-              </div>
-              <div style={{marginBottom:14}}><label style={{fontSize:12,fontWeight:600,color:TD,display:"block",marginBottom:7}}>Unternehmen</label><input className="INP" value={form.firma} onChange={e=>set("firma",e.target.value)} placeholder="Optional"/></div>
-              <div style={{marginBottom:14}}>
-                <label style={{fontSize:12,fontWeight:600,color:TD,display:"block",marginBottom:7}}>Was brauchen Sie?</label>
-                <div className="RADIOG" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                  {["Website","Automation","Beides","Unklar"].map(s=>(
-                    <label key={s} style={{display:"flex",alignItems:"center",gap:8,background:form.service===s?PD:B2,border:`1px solid ${form.service===s?PB:BR}`,borderRadius:8,padding:"10px 12px",cursor:"pointer",fontSize:13,color:form.service===s?P:TD,transition:"all .15s"}}>
-                      <input type="radio" name="svc" value={s} checked={form.service===s} onChange={()=>set("service",s)} style={{accentColor:P}}/>{s}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div style={{marginBottom:22}}><label style={{fontSize:12,fontWeight:600,color:TD,display:"block",marginBottom:7}}>Nachricht *</label><textarea className="INP" style={{resize:"vertical",minHeight:90}} value={form.msg} onChange={e=>set("msg",e.target.value)} placeholder="Was ist Ihre aktuelle Situation?"/></div>
-              <button onClick={submit} disabled={sending||!form.name||!form.email||!form.msg} className="B BF" style={{fontSize:15,opacity:(!form.name||!form.email||!form.msg)?.5:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-                {sending?<><div style={{width:18,height:18,border:"2px solid rgba(255,255,255,.3)",borderTop:"2px solid #fff",borderRadius:"50%",animation:"spin .7s linear infinite"}}/>Wird gesendet…</>:"Anfrage senden →"}
-              </button>
-              <p style={{textAlign:"center",fontSize:12,color:TF,marginTop:10}}>🔒 Vertraulich · Keine Weitergabe · Antwort in 24h</p>
+              <button onClick={() => onCreateAngebot(form)} style={{ background: BG3, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, padding: "11px 20px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>📄 Angebot erstellen</button>
+              <button onClick={() => onSignature(form)} style={{ background: BG3, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, padding: "11px 20px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>✍️ Unterschrift</button>
             </>
           )}
+          <button onClick={onClose} style={{ background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_DIM, borderRadius: 8, padding: "11px 18px", fontSize: 13, cursor: "pointer", fontFamily: "inherit", marginLeft: "auto" }}>Schließen</button>
         </div>
       </div>
-    </div></section>
+    </div>
   );
 }
 
-function ChatWidget(){
-  const[open,setOpen]=useState(false);const[msgs,setMsgs]=useState([{role:"assistant",text:"Hallo! Fragen zu Webdesign, Preisen oder Automation? Ich helfe direkt weiter."}]);const[input,setInput]=useState("");const[loading,setLoading]=useState(false);const bottom=useRef(null);
-  useEffect(()=>{bottom.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
-  const send=async()=>{const q=input.trim();if(!q||loading)return;setInput("");setMsgs(p=>[...p,{role:"user",text:q}]);setLoading(true);try{const res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:q})});const data=await res.json();setMsgs(p=>[...p,{role:"assistant",text:data.reply||"Fehler."}]);}catch{setMsgs(p=>[...p,{role:"assistant",text:"Gerade nicht erreichbar — schreib direkt auf WhatsApp!"}]);}finally{setLoading(false);}};
-  return(
-    <>
-      {open&&(
-        <div className="CHATW">
-          <div style={{background:B3,borderRadius:"16px 16px 0 0",padding:"14px 16px",borderBottom:`1px solid ${BR}`,display:"flex",alignItems:"center",gap:10}}>
-            <div style={{width:34,height:34,borderRadius:"50%",background:PD,border:`1px solid ${PB}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🤖</div>
-            <div><div style={{fontSize:13,fontWeight:700,color:T}}>Ohnesorge Assistant</div><div style={{fontSize:11,color:GR,display:"flex",alignItems:"center",gap:4}}><div style={{width:5,height:5,borderRadius:"50%",background:GR}}/>Online</div></div>
-            <button onClick={()=>setOpen(false)} style={{marginLeft:"auto",background:"none",border:"none",color:TD,cursor:"pointer",fontSize:18}}>✕</button>
+/* ══════════════════════════════════════════════════════════
+   ANGEBOTE
+══════════════════════════════════════════════════════════ */
+function Angebote({ angebote, setAngebote, leads, user, users }) {
+  const [showForm, setShowForm] = useState(false);
+  const [editAngebot, setEditAngebot] = useState(null);
+  const myAngebote = user.role === "admin" ? angebote : angebote.filter(a => a.verkaeufer_id === user.id);
+
+  const openNew = () => { setEditAngebot({ id: uid(), nummer: angebotsNr(), kunde_name: "", kunde_firma: "", kunde_email: "", leistung_name: "", leistung_beschreibung: "", preis: "", datum: today(), faellig: "", notizen: "", status: "Offen", verkaeufer_id: user.id }); setShowForm(true); };
+
+  const save = (a) => {
+    setAngebote(prev => { const exists = prev.find(x => x.id === a.id); return exists ? prev.map(x => x.id === a.id ? a : x) : [...prev, a]; });
+    setShowForm(false);
+  };
+
+  const deleteit = (id) => { if (confirm("Angebot löschen?")) setAngebote(prev => prev.filter(a => a.id !== id)); };
+
+  const printAngebot = (a) => {
+    const vk = users.find(u => u.id === a.verkaeufer_id);
+    generatePDF({ type: "Angebot", nummer: a.nummer, kunde: { name: a.kunde_name, firma: a.kunde_firma, email: a.kunde_email }, leistung: { name: a.leistung_name, beschreibung: a.leistung_beschreibung }, preis: a.preis, datum: a.datum, faellig: a.faellig, verkaeufer: vk?.name, notizen: a.notizen });
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: TEXT, letterSpacing: "-0.02em" }}>Angebote</div>
+        <button onClick={openNew} style={{ background: GOLD, color: "#070707", border: "none", borderRadius: 8, padding: "11px 22px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>+ Neues Angebot</button>
+      </div>
+
+      {showForm && editAngebot && (
+        <AngebotForm angebot={editAngebot} user={user} users={users} leads={leads} onSave={save} onClose={() => setShowForm(false)} onPrint={printAngebot} />
+      )}
+
+      <div style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: 14, overflow: "hidden" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto auto auto auto", gap: 0, padding: "10px 20px", borderBottom: `1px solid ${BORDER}`, fontSize: 11, fontWeight: 600, color: TEXT_DIM, textTransform: "uppercase", letterSpacing: ".06em" }}>
+          <span>Nummer</span><span>Kunde</span><span>Preis</span><span>Datum</span><span>Status</span><span></span>
+        </div>
+        {myAngebote.length === 0 && <div style={{ textAlign: "center", padding: "40px", fontSize: 14, color: TEXT_FAINT }}>Noch keine Angebote. Erstelle dein erstes.</div>}
+        {myAngebote.map(a => (
+          <div key={a.id} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto auto auto auto", gap: 0, padding: "14px 20px", borderBottom: `1px solid ${BORDER}`, alignItems: "center" }}>
+            <span style={{ fontSize: 13, fontFamily: "monospace", color: GOLD }}>{a.nummer}</span>
+            <div><div style={{ fontSize: 13, fontWeight: 500, color: TEXT }}>{a.kunde_name}</div>{a.kunde_firma && <div style={{ fontSize: 11, color: TEXT_DIM }}>{a.kunde_firma}</div>}</div>
+            <span style={{ fontSize: 13, fontWeight: 600, color: TEXT, paddingRight: 20 }}>{a.preis ? fmt(a.preis) : "—"}</span>
+            <span style={{ fontSize: 12, color: TEXT_DIM, paddingRight: 20 }}>{dateDE(a.datum)}</span>
+            <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 20, background: a.status === "Angenommen" ? "rgba(74,222,128,.1)" : a.status === "Abgelehnt" ? "rgba(248,113,113,.1)" : GOLD_DIM, color: a.status === "Angenommen" ? GREEN : a.status === "Abgelehnt" ? RED : GOLD, marginRight: 12 }}>{a.status}</span>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => { setEditAngebot(a); setShowForm(true); }} style={{ fontSize: 11, background: BG3, border: `1px solid ${BORDER}`, color: TEXT_DIM, borderRadius: 5, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}>Bearbeiten</button>
+              <button onClick={() => printAngebot(a)} style={{ fontSize: 11, background: GOLD_DIM, border: `1px solid ${GOLD_BORDER}`, color: GOLD, borderRadius: 5, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}>PDF</button>
+              <button onClick={() => deleteit(a.id)} style={{ fontSize: 11, background: "rgba(248,113,113,.06)", border: "1px solid rgba(248,113,113,.15)", color: RED, borderRadius: 5, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}>×</button>
+            </div>
           </div>
-          <div style={{flex:1,overflowY:"auto",padding:14}}>
-            {msgs.map((m,i)=>(
-              <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:10}}>
-                <div style={{maxWidth:"85%",padding:"9px 13px",borderRadius:m.role==="user"?"12px 12px 2px 12px":"12px 12px 12px 2px",background:m.role==="user"?P:B3,color:m.role==="user"?"#fff":"rgba(242,242,242,.85)",fontSize:13,lineHeight:1.55}}>{m.text}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AngebotForm({ angebot, user, users, leads, onSave, onClose, onPrint }) {
+  const [form, setForm] = useState({ ...angebot });
+  const [showSig, setShowSig] = useState(false);
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const inp = { background: BG3, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 14px", color: TEXT, fontSize: 13, fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box" };
+  const focus = e => e.currentTarget.style.borderColor = GOLD;
+  const blur = e => e.currentTarget.style.borderColor = BORDER;
+
+  const fillFromLead = (leadId) => {
+    const lead = leads.find(l => l.id === leadId);
+    if (lead) { set("kunde_name", lead.name); set("kunde_firma", lead.firma || ""); set("kunde_email", lead.email || ""); set("leistung_name", lead.leistung_name || ""); set("leistung_beschreibung", lead.leistung_beschreibung || ""); set("preis", lead.preis || ""); }
+  };
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.8)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: 20, maxWidth: 640, width: "100%", maxHeight: "92vh", overflow: "auto" }}>
+        {showSig && <SignaturePad onSave={sig => { set("signatur", sig); setShowSig(false); }} onCancel={() => setShowSig(false)} />}
+        <div style={{ padding: "24px 28px", borderBottom: `1px solid ${BORDER}`, display: "flex", justifyContent: "space-between" }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: TEXT }}>Angebot — <span style={{ color: GOLD, fontFamily: "monospace" }}>{form.nummer}</span></div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: TEXT_DIM, cursor: "pointer", fontSize: 20 }}>✕</button>
+        </div>
+        <div style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Aus Lead befüllen</label>
+            <select style={{ ...inp, cursor: "pointer" }} onChange={e => fillFromLead(e.target.value)} onFocus={focus} onBlur={blur}>
+              <option value="">— Lead auswählen (optional) —</option>
+              {leads.filter(l => user.role === "admin" || l.verkaeufer_id === user.id).map(l => <option key={l.id} value={l.id}>{l.name}{l.firma ? ` · ${l.firma}` : ""}</option>)}
+            </select>
+          </div>
+          <div style={{ height: 1, background: BORDER }} />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div><label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Kundenname *</label><input style={inp} value={form.kunde_name} onChange={e => set("kunde_name", e.target.value)} placeholder="Max Mustermann" onFocus={focus} onBlur={blur} /></div>
+            <div><label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Firma</label><input style={inp} value={form.kunde_firma || ""} onChange={e => set("kunde_firma", e.target.value)} onFocus={focus} onBlur={blur} /></div>
+            <div><label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>E-Mail Kunde</label><input style={inp} type="email" value={form.kunde_email || ""} onChange={e => set("kunde_email", e.target.value)} onFocus={focus} onBlur={blur} /></div>
+            <div><label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Angebotsdatum</label><input style={inp} type="date" value={form.datum} onChange={e => set("datum", e.target.value)} onFocus={focus} onBlur={blur} /></div>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Leistung</label>
+            <select style={{ ...inp, cursor: "pointer", marginBottom: 8 }} value={form.leistung_name || ""} onChange={e => { const t = LEISTUNGEN_TEMPLATES.find(t => t.name === e.target.value); set("leistung_name", e.target.value); if (t?.beschreibung) set("leistung_beschreibung", t.beschreibung); }} onFocus={focus} onBlur={blur}>
+              <option value="">— Vorlage wählen —</option>
+              {LEISTUNGEN_TEMPLATES.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+            </select>
+            <textarea style={{ ...inp, resize: "vertical", minHeight: 80 }} value={form.leistung_beschreibung || ""} onChange={e => set("leistung_beschreibung", e.target.value)} placeholder="Leistungsbeschreibung anpassen..." onFocus={focus} onBlur={blur} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Preis (€) — frei</label>
+              <input style={inp} type="number" value={form.preis || ""} onChange={e => set("preis", e.target.value ? Number(e.target.value) : "")} placeholder="z.B. 1490" onFocus={focus} onBlur={blur} />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Gültig bis</label>
+              <input style={inp} type="date" value={form.faellig || ""} onChange={e => set("faellig", e.target.value)} onFocus={focus} onBlur={blur} />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Status</label>
+              <select style={{ ...inp, cursor: "pointer" }} value={form.status} onChange={e => set("status", e.target.value)} onFocus={focus} onBlur={blur}>
+                {["Offen","Angenommen","Abgelehnt"].map(s => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+          <div><label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Notizen / Bedingungen</label><textarea style={{ ...inp, resize: "vertical", minHeight: 60 }} value={form.notizen || ""} onChange={e => set("notizen", e.target.value)} onFocus={focus} onBlur={blur} /></div>
+          {form.signatur && <div style={{ background: "#fff", borderRadius: 8, padding: 12, textAlign: "center" }}><img src={form.signatur} alt="Unterschrift" style={{ maxWidth: 200, height: 60, objectFit: "contain" }} /><div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>✓ Unterschrift vorhanden</div></div>}
+        </div>
+        <div style={{ padding: "16px 28px 24px", borderTop: `1px solid ${BORDER}`, display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button onClick={() => onSave(form)} style={{ background: GOLD, color: "#070707", border: "none", borderRadius: 8, padding: "11px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Speichern</button>
+          <button onClick={() => onPrint(form)} style={{ background: BG3, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, padding: "11px 18px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>📄 PDF / Drucken</button>
+          <button onClick={() => setShowSig(true)} style={{ background: BG3, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, padding: "11px 18px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>✍️ Unterschrift</button>
+          <button onClick={onClose} style={{ background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_DIM, borderRadius: 8, padding: "11px 18px", fontSize: 13, cursor: "pointer", fontFamily: "inherit", marginLeft: "auto" }}>Schließen</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   RECHNUNGEN
+══════════════════════════════════════════════════════════ */
+function Rechnungen({ rechnungen, setRechnungen, leads, angebote, user, users }) {
+  const [showForm, setShowForm] = useState(false);
+  const [editR, setEditR] = useState(null);
+  const myR = user.role === "admin" ? rechnungen : rechnungen.filter(r => r.verkaeufer_id === user.id);
+  const offen = myR.filter(r => r.status === "Offen").reduce((s, r) => s + (r.preis || 0), 0);
+  const bezahlt = myR.filter(r => r.status === "Bezahlt").reduce((s, r) => s + (r.preis || 0), 0);
+
+  const openNew = () => {
+    const faellig = new Date();
+    faellig.setDate(faellig.getDate() + BIZ.zahlungsziel);
+    setEditR({ id: uid(), nummer: rechnungsNr(), kunde_name: "", kunde_firma: "", kunde_email: "", leistung_name: "", leistung_beschreibung: "", preis: "", datum: today(), faellig: faellig.toISOString().split("T")[0], status: "Offen", verkaeufer_id: user.id, notizen: "" });
+    setShowForm(true);
+  };
+
+  const save = (r) => { setRechnungen(prev => { const e = prev.find(x => x.id === r.id); return e ? prev.map(x => x.id === r.id ? r : x) : [...prev, r]; }); setShowForm(false); };
+  const deleteit = (id) => { if (confirm("Rechnung löschen?")) setRechnungen(prev => prev.filter(r => r.id !== id)); };
+  const toggleStatus = (id) => setRechnungen(prev => prev.map(r => r.id === id ? { ...r, status: r.status === "Offen" ? "Bezahlt" : "Offen" } : r));
+
+  const printR = (r) => {
+    const vk = users.find(u => u.id === r.verkaeufer_id);
+    generatePDF({ type: "Rechnung", nummer: r.nummer, kunde: { name: r.kunde_name, firma: r.kunde_firma, email: r.kunde_email }, leistung: { name: r.leistung_name, beschreibung: r.leistung_beschreibung }, preis: r.preis, datum: r.datum, faellig: r.faellig, verkaeufer: vk?.name, notizen: r.notizen });
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: TEXT, letterSpacing: "-0.02em" }}>Rechnungen</div>
+        <button onClick={openNew} style={{ background: GOLD, color: "#070707", border: "none", borderRadius: 8, padding: "11px 22px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>+ Neue Rechnung</button>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 24 }}>
+        <div style={{ background: "rgba(248,113,113,.06)", border: "1px solid rgba(248,113,113,.15)", borderRadius: 12, padding: "18px 20px" }}>
+          <div style={{ fontSize: 11, color: RED, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 6 }}>Offen</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: RED, letterSpacing: "-0.03em" }}>{offen ? fmt(offen) : "—"}</div>
+          <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 4 }}>{myR.filter(r => r.status === "Offen").length} Rechnungen</div>
+        </div>
+        <div style={{ background: "rgba(74,222,128,.06)", border: "1px solid rgba(74,222,128,.15)", borderRadius: 12, padding: "18px 20px" }}>
+          <div style={{ fontSize: 11, color: GREEN, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 6 }}>Bezahlt</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: GREEN, letterSpacing: "-0.03em" }}>{bezahlt ? fmt(bezahlt) : "—"}</div>
+          <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 4 }}>{myR.filter(r => r.status === "Bezahlt").length} Rechnungen</div>
+        </div>
+      </div>
+
+      {showForm && editR && (
+        <RechnungForm rechnung={editR} user={user} users={users} leads={leads} angebote={angebote} onSave={save} onClose={() => setShowForm(false)} onPrint={printR} />
+      )}
+
+      <div style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: 14, overflow: "hidden" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr auto auto auto auto", gap: 0, padding: "10px 20px", borderBottom: `1px solid ${BORDER}`, fontSize: 11, fontWeight: 600, color: TEXT_DIM, textTransform: "uppercase", letterSpacing: ".06em" }}>
+          <span style={{ marginRight: 16 }}>Nr.</span><span>Kunde</span><span>Leistung</span><span style={{ paddingRight: 20 }}>Preis</span><span style={{ paddingRight: 20 }}>Fällig</span><span style={{ marginRight: 12 }}>Status</span><span></span>
+        </div>
+        {myR.length === 0 && <div style={{ textAlign: "center", padding: "40px", fontSize: 14, color: TEXT_FAINT }}>Noch keine Rechnungen.</div>}
+        {myR.map(r => {
+          const ueberfaellig = r.status === "Offen" && r.faellig && new Date(r.faellig) < new Date();
+          return (
+            <div key={r.id} style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr auto auto auto auto", gap: 0, padding: "12px 20px", borderBottom: `1px solid ${BORDER}`, alignItems: "center", background: ueberfaellig ? "rgba(248,113,113,.04)" : "transparent" }}>
+              <span style={{ fontSize: 12, fontFamily: "monospace", color: GOLD, marginRight: 16 }}>{r.nummer}</span>
+              <div><div style={{ fontSize: 13, fontWeight: 500, color: TEXT }}>{r.kunde_name}</div>{r.kunde_firma && <div style={{ fontSize: 11, color: TEXT_DIM }}>{r.kunde_firma}</div>}</div>
+              <div style={{ fontSize: 12, color: TEXT_DIM }}>{r.leistung_name || "—"}</div>
+              <span style={{ fontSize: 13, fontWeight: 700, color: TEXT, paddingRight: 20 }}>{r.preis ? fmt(r.preis) : "—"}</span>
+              <span style={{ fontSize: 12, color: ueberfaellig ? RED : TEXT_DIM, paddingRight: 20 }}>{dateDE(r.faellig)}{ueberfaellig ? " ⚠" : ""}</span>
+              <button onClick={() => toggleStatus(r.id)} style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 20, border: "none", background: r.status === "Bezahlt" ? "rgba(74,222,128,.1)" : "rgba(248,113,113,.1)", color: r.status === "Bezahlt" ? GREEN : RED, cursor: "pointer", fontFamily: "inherit", marginRight: 12, whiteSpace: "nowrap" }}>{r.status}</button>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => { setEditR(r); setShowForm(true); }} style={{ fontSize: 11, background: BG3, border: `1px solid ${BORDER}`, color: TEXT_DIM, borderRadius: 5, padding: "4px 8px", cursor: "pointer", fontFamily: "inherit" }}>✏</button>
+                <button onClick={() => printR(r)} style={{ fontSize: 11, background: GOLD_DIM, border: `1px solid ${GOLD_BORDER}`, color: GOLD, borderRadius: 5, padding: "4px 8px", cursor: "pointer", fontFamily: "inherit" }}>PDF</button>
+                <button onClick={() => deleteit(r.id)} style={{ fontSize: 11, background: "rgba(248,113,113,.06)", border: "1px solid rgba(248,113,113,.15)", color: RED, borderRadius: 5, padding: "4px 8px", cursor: "pointer", fontFamily: "inherit" }}>×</button>
               </div>
-            ))}
-            {loading&&<div style={{display:"flex",gap:4,padding:"10px 14px",background:B3,borderRadius:"12px 12px 12px 2px",width:"fit-content"}}>{[0,1,2].map(i=><div key={i} style={{width:7,height:7,borderRadius:"50%",background:TD,animation:`bounce .8s ${i*.15}s infinite`}}/>)}</div>}
-            <div ref={bottom}/>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function RechnungForm({ rechnung, user, users, leads, angebote, onSave, onClose, onPrint }) {
+  const [form, setForm] = useState({ ...rechnung });
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const inp = { background: BG3, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 14px", color: TEXT, fontSize: 13, fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box" };
+  const focus = e => e.currentTarget.style.borderColor = GOLD;
+  const blur = e => e.currentTarget.style.borderColor = BORDER;
+
+  const fillFromAngebot = (id) => {
+    const a = angebote.find(x => x.id === id);
+    if (a) { set("kunde_name", a.kunde_name); set("kunde_firma", a.kunde_firma || ""); set("kunde_email", a.kunde_email || ""); set("leistung_name", a.leistung_name || ""); set("leistung_beschreibung", a.leistung_beschreibung || ""); set("preis", a.preis || ""); }
+  };
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.8)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: 20, maxWidth: 600, width: "100%", maxHeight: "90vh", overflow: "auto" }}>
+        <div style={{ padding: "24px 28px", borderBottom: `1px solid ${BORDER}`, display: "flex", justifyContent: "space-between" }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: TEXT }}>Rechnung — <span style={{ color: GOLD, fontFamily: "monospace" }}>{form.nummer}</span></div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: TEXT_DIM, cursor: "pointer", fontSize: 20 }}>✕</button>
+        </div>
+        <div style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Aus Angebot übernehmen</label>
+            <select style={{ ...inp, cursor: "pointer" }} onChange={e => fillFromAngebot(e.target.value)} onFocus={focus} onBlur={blur}>
+              <option value="">— Angebot wählen (optional) —</option>
+              {angebote.filter(a => user.role === "admin" || a.verkaeufer_id === user.id).map(a => <option key={a.id} value={a.id}>{a.nummer} · {a.kunde_name}</option>)}
+            </select>
           </div>
-          <div style={{padding:10,borderTop:`1px solid ${BR}`,display:"flex",gap:8}}>
-            <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Frage stellen…" className="INP" style={{flex:1,fontSize:13}}/>
-            <button onClick={send} disabled={!input.trim()||loading} className="B" style={{padding:"9px 14px",opacity:input.trim()&&!loading?1:.4,borderRadius:8}}>→</button>
+          <div style={{ height: 1, background: BORDER }} />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div><label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Kundenname *</label><input style={inp} value={form.kunde_name} onChange={e => set("kunde_name", e.target.value)} onFocus={focus} onBlur={blur} /></div>
+            <div><label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Firma</label><input style={inp} value={form.kunde_firma || ""} onChange={e => set("kunde_firma", e.target.value)} onFocus={focus} onBlur={blur} /></div>
+            <div><label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>E-Mail (für Versand)</label><input style={inp} type="email" value={form.kunde_email || ""} onChange={e => set("kunde_email", e.target.value)} onFocus={focus} onBlur={blur} /></div>
+            <div><label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Rechnungsdatum</label><input style={inp} type="date" value={form.datum} onChange={e => set("datum", e.target.value)} onFocus={focus} onBlur={blur} /></div>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Leistung</label>
+            <select style={{ ...inp, cursor: "pointer", marginBottom: 8 }} value={form.leistung_name || ""} onChange={e => { const t = LEISTUNGEN_TEMPLATES.find(t => t.name === e.target.value); set("leistung_name", e.target.value); if (t?.beschreibung) set("leistung_beschreibung", t.beschreibung); }} onFocus={focus} onBlur={blur}>
+              <option value="">— Vorlage wählen —</option>
+              {LEISTUNGEN_TEMPLATES.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+            </select>
+            <textarea style={{ ...inp, resize: "vertical", minHeight: 70 }} value={form.leistung_beschreibung || ""} onChange={e => set("leistung_beschreibung", e.target.value)} placeholder="Beschreibung..." onFocus={focus} onBlur={blur} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+            <div><label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Preis (€)</label><input style={inp} type="number" value={form.preis || ""} onChange={e => set("preis", e.target.value ? Number(e.target.value) : "")} placeholder="z.B. 1490" onFocus={focus} onBlur={blur} /></div>
+            <div><label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Fällig am</label><input style={inp} type="date" value={form.faellig || ""} onChange={e => set("faellig", e.target.value)} onFocus={focus} onBlur={blur} /></div>
+            <div><label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Status</label><select style={{ ...inp, cursor: "pointer" }} value={form.status} onChange={e => set("status", e.target.value)} onFocus={focus} onBlur={blur}>{["Offen","Bezahlt","Storniert"].map(s => <option key={s}>{s}</option>)}</select></div>
+          </div>
+          <div><label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Notizen</label><textarea style={{ ...inp, resize: "vertical", minHeight: 60 }} value={form.notizen || ""} onChange={e => set("notizen", e.target.value)} onFocus={focus} onBlur={blur} /></div>
+        </div>
+        <div style={{ padding: "16px 28px 24px", borderTop: `1px solid ${BORDER}`, display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button onClick={() => onSave(form)} style={{ background: GOLD, color: "#070707", border: "none", borderRadius: 8, padding: "11px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Speichern</button>
+          <button onClick={() => onPrint(form)} style={{ background: BG3, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, padding: "11px 18px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>📄 PDF / Drucken</button>
+          <button onClick={onClose} style={{ background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_DIM, borderRadius: 8, padding: "11px 18px", fontSize: 13, cursor: "pointer", fontFamily: "inherit", marginLeft: "auto" }}>Schließen</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   KUNDEN (CRM)
+══════════════════════════════════════════════════════════ */
+function Kunden({ leads, setLeads, user, users }) {
+  const [search, setSearch] = useState("");
+  const myLeads = user.role === "admin" ? leads : leads.filter(l => l.verkaeufer_id === user.id);
+  const filtered = myLeads.filter(l => l.name.toLowerCase().includes(search.toLowerCase()) || (l.firma || "").toLowerCase().includes(search.toLowerCase()) || (l.email || "").toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: TEXT, letterSpacing: "-0.02em" }}>Kunden & Leads</div>
+        <div style={{ fontSize: 13, color: TEXT_DIM }}>{filtered.length} Einträge</div>
+      </div>
+      <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Suchen nach Name, Firma, E-Mail..." style={{ background: BG3, border: `1px solid ${BORDER}`, borderRadius: 10, padding: "12px 16px", color: TEXT, fontSize: 14, fontFamily: "inherit", outline: "none", width: "100%", marginBottom: 20 }} />
+      <div style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: 14, overflow: "hidden" }}>
+        {filtered.length === 0 && <div style={{ textAlign: "center", padding: "40px", fontSize: 14, color: TEXT_FAINT }}>Keine Einträge gefunden.</div>}
+        {filtered.map((lead, i) => {
+          const vk = users.find(u => u.id === lead.verkaeufer_id);
+          return (
+            <div key={lead.id} style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: 16, padding: "16px 20px", borderBottom: i < filtered.length - 1 ? `1px solid ${BORDER}` : "none", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: TEXT }}>{lead.name}</div>
+                {lead.firma && <div style={{ fontSize: 12, color: TEXT_DIM }}>{lead.firma}</div>}
+                <div style={{ display: "flex", gap: 12, marginTop: 4 }}>
+                  {lead.email && <a href={`mailto:${lead.email}`} style={{ fontSize: 12, color: BLUE, textDecoration: "none" }}>{lead.email}</a>}
+                  {lead.telefon && <span style={{ fontSize: 12, color: TEXT_DIM }}>{lead.telefon}</span>}
+                </div>
+                {lead.notizen && <div style={{ fontSize: 12, color: TEXT_FAINT, marginTop: 4, fontStyle: "italic" }}>{lead.notizen.slice(0, 80)}{lead.notizen.length > 80 ? "..." : ""}</div>}
+              </div>
+              <div style={{ textAlign: "right" }}>
+                {lead.preis && <div style={{ fontSize: 13, fontWeight: 700, color: GOLD }}>{fmt(lead.preis)}</div>}
+                {lead.leistung_name && <div style={{ fontSize: 11, color: TEXT_DIM }}>{lead.leistung_name}</div>}
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 20, background: lead.status === "Gewonnen" ? "rgba(74,222,128,.1)" : GOLD_DIM, color: lead.status === "Gewonnen" ? GREEN : GOLD }}>{lead.status}</div>
+                {vk && user.role === "admin" && <div style={{ fontSize: 10, color: TEXT_FAINT, marginTop: 4 }}>{vk.name}</div>}
+              </div>
+              {lead.wiedervorlage && (
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 10, color: TEXT_FAINT }}>Wiedervorlage</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: new Date(lead.wiedervorlage) <= new Date() ? RED : TEXT }}>{dateDE(lead.wiedervorlage)}</div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   TEAM MANAGEMENT (Admin only)
+══════════════════════════════════════════════════════════ */
+function Team({ users, setUsers }) {
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ id: "", name: "", username: "", password: "", role: "verkaeufer" });
+  const setF = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const inp = { background: BG3, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 14px", color: TEXT, fontSize: 13, fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box" };
+
+  const save = () => {
+    if (!form.name || !form.username || !form.password) return;
+    const newUser = { ...form, id: form.id || uid() };
+    setUsers(prev => { const e = prev.find(u => u.id === newUser.id); return e ? prev.map(u => u.id === newUser.id ? newUser : u) : [...prev, newUser]; });
+    setShowForm(false);
+    setForm({ id: "", name: "", username: "", password: "", role: "verkaeufer" });
+  };
+
+  const deleteUser = (id) => { if (id === "admin") return alert("Admin-Account kann nicht gelöscht werden."); if (confirm("Benutzer löschen?")) setUsers(prev => prev.filter(u => u.id !== id)); };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: TEXT, letterSpacing: "-0.02em" }}>Team verwalten</div>
+          <div style={{ fontSize: 13, color: TEXT_DIM, marginTop: 4 }}>{users.length} Benutzer · max. empfohlen: 7</div>
+        </div>
+        <button onClick={() => { setForm({ id: uid(), name: "", username: "", password: "", role: "verkaeufer" }); setShowForm(true); }} style={{ background: GOLD, color: "#070707", border: "none", borderRadius: 8, padding: "11px 22px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>+ Verkäufer hinzufügen</button>
+      </div>
+
+      {showForm && (
+        <div style={{ background: BG2, border: `1px solid ${GOLD_BORDER}`, borderRadius: 14, padding: 24, marginBottom: 24 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: TEXT, marginBottom: 20 }}>Neuer Benutzer</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+            <div><label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Vollständiger Name</label><input style={inp} value={form.name} onChange={e => setF("name", e.target.value)} placeholder="Max Mustermann" /></div>
+            <div><label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Benutzername (Login)</label><input style={inp} value={form.username} onChange={e => setF("username", e.target.value.toLowerCase().replace(/\s/g, ""))} placeholder="max.mustermann" /></div>
+            <div><label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Passwort</label><input style={inp} type="password" value={form.password} onChange={e => setF("password", e.target.value)} placeholder="Sicheres Passwort" /></div>
+            <div><label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Rolle</label><select style={{ ...inp, cursor: "pointer" }} value={form.role} onChange={e => setF("role", e.target.value)}><option value="verkaeufer">Verkäufer</option><option value="admin">Administrator</option></select></div>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={save} style={{ background: GOLD, color: "#070707", border: "none", borderRadius: 8, padding: "11px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Speichern</button>
+            <button onClick={() => setShowForm(false)} style={{ background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_DIM, borderRadius: 8, padding: "11px 18px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Abbrechen</button>
           </div>
         </div>
       )}
-      <button onClick={()=>setOpen(o=>!o)} style={{position:"fixed",bottom:20,right:20,width:52,height:52,borderRadius:"50%",background:open?B3:P,border:open?`1px solid ${BR}`:"none",color:open?"#f2f2f2":"#fff",fontSize:20,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 24px rgba(139,92,246,.4)",zIndex:300,transition:"all .2s"}}>
-        {open?"✕":"🤖"}
-      </button>
-    </>
+
+      <div style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: 14, overflow: "hidden" }}>
+        {users.map((u, i) => (
+          <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 20px", borderBottom: i < users.length - 1 ? `1px solid ${BORDER}` : "none" }}>
+            <div style={{ width: 40, height: 40, borderRadius: "50%", background: GOLD_DIM, border: `1px solid ${GOLD_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: GOLD, flexShrink: 0 }}>
+              {u.name.charAt(0)}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: TEXT }}>{u.name}</div>
+              <div style={{ fontSize: 12, color: TEXT_DIM }}>@{u.username} · {u.role === "admin" ? "Administrator" : "Verkäufer"}</div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => { setForm(u); setShowForm(true); }} style={{ fontSize: 12, background: BG3, border: `1px solid ${BORDER}`, color: TEXT_DIM, borderRadius: 6, padding: "6px 14px", cursor: "pointer", fontFamily: "inherit" }}>Bearbeiten</button>
+              {u.id !== "admin" && <button onClick={() => deleteUser(u.id)} style={{ fontSize: 12, background: "rgba(248,113,113,.06)", border: "1px solid rgba(248,113,113,.15)", color: RED, borderRadius: 6, padding: "6px 14px", cursor: "pointer", fontFamily: "inherit" }}>Löschen</button>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
-function CookieBanner(){
-  const[vis,setVis]=useState(false);
-  useEffect(()=>{try{if(!localStorage.getItem("os_cookie"))setVis(true);}catch{setVis(true);}},[]); 
-  const accept=all=>{try{localStorage.setItem("os_cookie",all?"all":"essential");}catch{}setVis(false);};
-  if(!vis)return null;
-  return(
-    <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:400,background:"rgba(6,6,6,.97)",backdropFilter:"blur(12px)",borderTop:`1px solid ${BR}`,padding:"16px 48px",animation:"fadeUp .4s ease"}}>
-      <div style={{maxWidth:1160,margin:"0 auto",display:"flex",alignItems:"center",gap:20,flexWrap:"wrap",justifyContent:"space-between"}}>
-        <p style={{fontSize:14,color:TD,lineHeight:1.6,flex:1,minWidth:240}}>🍪 Technisch notwendige Cookies. Mit „Alle akzeptieren" stimmen Sie Analyse-Cookies zu.</p>
-        <div style={{display:"flex",gap:10,flexShrink:0}}>
-          <button onClick={()=>accept(false)} className="BO" style={{padding:"9px 16px",fontSize:13}}>Nur notwendige</button>
-          <button onClick={()=>accept(true)} className="B" style={{padding:"9px 18px",fontSize:13,borderRadius:8}}>Alle akzeptieren</button>
+/* ══════════════════════════════════════════════════════════
+   SIGNATURE FLOW (from Lead)
+══════════════════════════════════════════════════════════ */
+function SignatureFlow({ lead, user, onClose, onSigned }) {
+  const [showPad, setShowPad] = useState(false);
+  const [sig, setSig] = useState(null);
+  const [done, setDone] = useState(false);
+
+  const complete = (dataUrl) => {
+    setSig(dataUrl);
+    setShowPad(false);
+    setDone(true);
+    generatePDF({
+      type: "Angebot", nummer: angebotsNr(), kunde: { name: lead.name, firma: lead.firma, email: lead.email },
+      leistung: { name: lead.leistung_name, beschreibung: lead.leistung_beschreibung }, preis: lead.preis,
+      datum: today(), faellig: "", signatureDataUrl: dataUrl, verkaeufer: user.name, notizen: lead.notizen,
+    });
+    onSigned({ ...lead, status: "Gewonnen", unterschrift: dataUrl, gewonnen_am: today() });
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.85)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      {showPad && <SignaturePad onSave={complete} onCancel={() => setShowPad(false)} />}
+      {!showPad && (
+        <div style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: 20, maxWidth: 520, width: "100%", padding: 32 }}>
+          {!done ? (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: TEXT }}>Auftrag vor Ort abschließen</div>
+                <button onClick={onClose} style={{ background: "none", border: "none", color: TEXT_DIM, cursor: "pointer", fontSize: 20 }}>✕</button>
+              </div>
+              <div style={{ background: BG3, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "16px 20px", marginBottom: 24 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: TEXT, marginBottom: 12 }}>Auftragsdetails</div>
+                {[["Kunde", lead.name + (lead.firma ? ` · ${lead.firma}` : "")], ["Leistung", lead.leistung_name || "—"], ["Preis", lead.preis ? fmt(lead.preis) : "Auf Vereinbarung"], ["Betreuer", user.name]].map(([l, v]) => (
+                  <div key={l} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "6px 0", borderBottom: `0.5px solid ${BORDER}` }}>
+                    <span style={{ color: TEXT_DIM }}>{l}</span><span style={{ color: TEXT, fontWeight: 500 }}>{v}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 13, color: TEXT_DIM, lineHeight: 1.7, marginBottom: 24 }}>
+                Nach der Unterschrift wird automatisch ein PDF generiert und kann heruntergeladen werden. Der Lead wird auf <strong style={{ color: GREEN }}>„Gewonnen"</strong> gesetzt.
+              </div>
+              <button onClick={() => setShowPad(true)} style={{ width: "100%", background: GOLD, color: "#070707", border: "none", borderRadius: 10, padding: "15px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                ✍️ Jetzt unterschreiben
+              </button>
+            </>
+          ) : (
+            <div style={{ textAlign: "center", padding: "20px 0" }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: GREEN, marginBottom: 8 }}>Auftrag abgeschlossen!</div>
+              <div style={{ fontSize: 14, color: TEXT_DIM, marginBottom: 8 }}>PDF wurde geöffnet — als Datei speichern oder drucken.</div>
+              <div style={{ background: "#fff", borderRadius: 8, padding: 12, display: "inline-block", marginBottom: 20 }}>
+                <img src={sig} alt="Unterschrift" style={{ maxWidth: 200, height: 60, objectFit: "contain" }} />
+                <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>{lead.name} · {dateDE(today())}</div>
+              </div>
+              <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+                <button onClick={() => complete(sig)} style={{ background: BG3, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, padding: "10px 18px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>PDF erneut öffnen</button>
+                <button onClick={onClose} style={{ background: GOLD, color: "#070707", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Fertig</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   INHALTE EDITOR — Website-Pakete live editieren
+══════════════════════════════════════════════════════════ */
+const DEF_PAKETE_ADMIN = [
+  { id:"starter",      name:"Starter",        price:"890 €",   for:"Handwerker, Gastronomen, lokale Dienstleister", featured:false,
+    feats:["5-seitige Website","Design nach Ihren Wünschen","Mobile-optimiert & schnell","Kontaktformular & Google Maps","Impressum & Datenschutz","3 Monate Support"] },
+  { id:"professional", name:"Professional",   price:"1.490 €", for:"Unternehmen die online wachsen wollen",         featured:true,
+    feats:["Alles aus Starter","Bis 10 Seiten","SEO-Optimierung","Blog / News-Bereich","Google Analytics","1 KI-Automation inklusive","6 Monate Support"] },
+  { id:"automation",   name:"Automation Only",price:"490 €",   for:"Wer schon eine Website hat",                   featured:false,
+    feats:["1 vollständiger Workflow","E-Mail / WhatsApp / CRM","Einrichtung & Einweisung","30 Tage Nachbetreuung"] },
+];
+
+function InhalteEditor() {
+  const [pakete, setPakete] = useState(() => {
+    try { const v = localStorage.getItem("os_content_pakete"); return v ? JSON.parse(v) : DEF_PAKETE_ADMIN; } catch { return DEF_PAKETE_ADMIN; }
+  });
+  const [saved, setSaved] = useState(false);
+  const [activePaket, setActivePaket] = useState(0);
+
+  const update = (pi, key, val) => setPakete(prev => prev.map((p, i) => i === pi ? { ...p, [key]: val } : p));
+  const updateFeat = (pi, fi, val) => setPakete(prev => prev.map((p, i) => i === pi ? { ...p, feats: p.feats.map((f, j) => j === fi ? val : f) } : p));
+  const addFeat = (pi) => setPakete(prev => prev.map((p, i) => i === pi ? { ...p, feats: [...p.feats, "Neues Feature"] } : p));
+  const removeFeat = (pi, fi) => setPakete(prev => prev.map((p, i) => i === pi ? { ...p, feats: p.feats.filter((_, j) => j !== fi) } : p));
+  const toggleFeatured = (pi) => setPakete(prev => prev.map((p, i) => ({ ...p, featured: i === pi })));
+
+  const save = () => {
+    try { localStorage.setItem("os_content_pakete", JSON.stringify(pakete)); setSaved(true); setTimeout(() => setSaved(false), 2500); } catch {}
+  };
+  const reset = () => { if (confirm("Auf Standard zurücksetzen?")) { setPakete(DEF_PAKETE_ADMIN); localStorage.removeItem("os_content_pakete"); } };
+
+  const inp = { background: BG3, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 14px", color: TEXT, fontSize: 13, fontFamily: "inherit", outline: "none", width: "100%", transition: "border-color .15s" };
+  const focus = e => e.currentTarget.style.borderColor = GOLD;
+  const blur = e => e.currentTarget.style.borderColor = BORDER;
+
+  const cur = pakete[activePaket];
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: TEXT, letterSpacing: "-0.02em" }}>Website-Inhalte</div>
+          <div style={{ fontSize: 13, color: TEXT_DIM, marginTop: 4 }}>Änderungen erscheinen sofort live auf der Website (nach Seiten-Reload).</div>
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={reset} style={{ background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_DIM, borderRadius: 8, padding: "10px 16px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Zurücksetzen</button>
+          <button onClick={save} style={{ background: saved ? "rgba(74,222,128,.15)" : GOLD, color: saved ? GREEN : "#070707", border: saved ? "1px solid rgba(74,222,128,.3)" : "none", borderRadius: 8, padding: "11px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", transition: "all .3s" }}>
+            {saved ? "✓ Gespeichert!" : "Speichern & Live schalten"}
+          </button>
+        </div>
+      </div>
+
+      <div style={{ background: "rgba(232,197,71,.06)", border: "1px solid rgba(232,197,71,.2)", borderRadius: 12, padding: "14px 20px", marginBottom: 24, fontSize: 13, color: TEXT_DIM }}>
+        💡 <strong style={{ color: TEXT }}>So funktioniert es:</strong> Pakete hier bearbeiten → Speichern → auf der Website die Seite neu laden. Preise, Features, alles editierbar.
+      </div>
+
+      {/* Paket Tabs */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+        {pakete.map((p, i) => (
+          <button key={i} onClick={() => setActivePaket(i)} style={{ flex: 1, padding: "12px", background: activePaket === i ? GOLD_DIM : "transparent", border: `1px solid ${activePaket === i ? GOLD_BORDER : BORDER}`, borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: activePaket === i ? 700 : 400, color: activePaket === i ? GOLD : TEXT_DIM, transition: "all .15s", position: "relative" }}>
+            {p.name}
+            {p.featured && <span style={{ position: "absolute", top: -6, right: -6, background: GOLD, color: "#070707", fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 10 }}>Beliebt</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* Paket Editor */}
+      <div style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: 14, padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Paket-Name</label>
+            <input style={inp} value={cur.name} onChange={e => update(activePaket, "name", e.target.value)} onFocus={focus} onBlur={blur} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Preis (frei editierbar)</label>
+            <input style={inp} value={cur.price} onChange={e => update(activePaket, "price", e.target.value)} placeholder="z.B. 890 € oder Ab 490 €" onFocus={focus} onBlur={blur} />
+          </div>
+        </div>
+
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 7 }}>Zielgruppen-Beschreibung</label>
+          <input style={inp} value={cur.for} onChange={e => update(activePaket, "for", e.target.value)} placeholder="Für wen ist dieses Paket?" onFocus={focus} onBlur={blur} />
+        </div>
+
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM }}>Features ({cur.feats.length})</label>
+            <button onClick={() => addFeat(activePaket)} style={{ fontSize: 12, background: GOLD_DIM, border: `1px solid ${GOLD_BORDER}`, color: GOLD, borderRadius: 6, padding: "4px 12px", cursor: "pointer", fontFamily: "inherit" }}>+ Feature hinzufügen</button>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {cur.feats.map((feat, fi) => (
+              <div key={fi} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <span style={{ color: GREEN, flexShrink: 0, fontSize: 14 }}>✓</span>
+                <input style={{ ...inp, flex: 1 }} value={feat} onChange={e => updateFeat(activePaket, fi, e.target.value)} onFocus={focus} onBlur={blur} />
+                <button onClick={() => removeFeat(activePaket, fi)} style={{ background: "rgba(248,113,113,.06)", border: "1px solid rgba(248,113,113,.15)", color: RED, borderRadius: 6, padding: "8px 12px", cursor: "pointer", fontFamily: "inherit", fontSize: 13, flexShrink: 0 }}>×</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 8, borderTop: `1px solid ${BORDER}` }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 14, color: TEXT }}>
+            <input type="checkbox" checked={cur.featured} onChange={() => toggleFeatured(activePaket)} style={{ accentColor: GOLD, width: 16, height: 16 }} />
+            Als "Beliebt" markieren (nur ein Paket gleichzeitig möglich)
+          </label>
+        </div>
+      </div>
+
+      {/* Vorschau */}
+      <div style={{ background: BG3, border: `1px solid ${BORDER}`, borderRadius: 14, padding: 24, marginTop: 20 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 16 }}>Vorschau — so erscheint es live</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
+          {pakete.map((p, i) => (
+            <div key={i} style={{ background: p.featured ? "linear-gradient(160deg,rgba(232,197,71,.06) 0%,#161616 50%)" : "#0f0f0f", border: `1px solid ${p.featured ? "rgba(232,197,71,.3)" : "rgba(255,255,255,.07)"}`, borderRadius: 10, padding: 18, position: "relative", opacity: i === activePaket ? 1 : 0.5, transition: "opacity .2s" }}>
+              {p.featured && <div style={{ position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)", background: GOLD, color: "#070707", fontSize: 10, fontWeight: 700, padding: "2px 12px", borderRadius: 20 }}>Beliebt</div>}
+              <div style={{ fontSize: 11, color: "rgba(240,240,240,.35)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 4 }}>{p.name}</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: "#f0f0f0", letterSpacing: "-.03em", marginBottom: 2 }}>{p.price}</div>
+              <div style={{ fontSize: 11, color: "rgba(240,240,240,.3)", marginBottom: 12 }}>{p.for}</div>
+              <ul style={{ listStyle: "none", fontSize: 11, color: "rgba(240,240,240,.5)" }}>
+                {p.feats.slice(0, 3).map((f, j) => <li key={j} style={{ marginBottom: 4 }}>✓ {f}</li>)}
+                {p.feats.length > 3 && <li style={{ color: "rgba(240,240,240,.25)" }}>+{p.feats.length - 3} weitere…</li>}
+              </ul>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-function LegalModal({id,onClose}){
-  const c=LEGAL[id];if(!c)return null;
-  return(
-    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.82)",backdropFilter:"blur(8px)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:B2,border:`1px solid ${BR2}`,borderRadius:20,maxWidth:680,width:"100%",maxHeight:"85vh",display:"flex",flexDirection:"column",animation:"fadeUp .3s ease"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"20px 24px",borderBottom:`1px solid ${BR}`}}><h2 style={{fontSize:18,fontWeight:800,color:T}}>{c.title}</h2><button onClick={onClose} style={{background:B3,border:"none",borderRadius:"50%",width:32,height:32,cursor:"pointer",color:TD,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div>
-        <div style={{overflowY:"auto",padding:24}}><pre style={{fontFamily:"inherit",fontSize:14,lineHeight:1.78,color:TD,whiteSpace:"pre-wrap"}}>{c.body}</pre></div>
+/* ══════════════════════════════════════════════════════════
+   MAIN ADMIN APP
+══════════════════════════════════════════════════════════ */
+export default function Admin() {
+  const [user, setUser] = useState(null);
+  const [view, setView] = useState("dashboard");
+  const [leads, setLeadsRaw] = useState(() => ls.get("leads", []));
+  const [rechnungen, setRechnungenRaw] = useState(() => ls.get("rechnungen", []));
+  const [angebote, setAngeboteRaw] = useState(() => ls.get("angebote", []));
+  const [users, setUsersRaw] = useState(() => ls.get("users", INITIAL_USERS));
+  const [leadModal, setLeadModal] = useState(null);
+  const [sigFlow, setSigFlow] = useState(null);
+  const [angebotFromLead, setAngebotFromLead] = useState(null);
+
+  const setLeads = (v) => { const next = typeof v === "function" ? v(leads) : v; ls.set("leads", next); setLeadsRaw(next); };
+  const setRechnungen = (v) => { const next = typeof v === "function" ? v(rechnungen) : v; ls.set("rechnungen", next); setRechnungenRaw(next); };
+  const setAngebote = (v) => { const next = typeof v === "function" ? v(angebote) : v; ls.set("angebote", next); setAngeboteRaw(next); };
+  const setUsers = (v) => { const next = typeof v === "function" ? v(users) : v; ls.set("users", next); setUsersRaw(next); };
+
+  const handleSaveLead = (lead) => { setLeads(prev => { const e = prev.find(l => l.id === lead.id); return e ? prev.map(l => l.id === lead.id ? lead : l) : [...prev, lead]; }); setLeadModal(null); };
+  const handleSigned = (lead) => { setLeads(prev => prev.map(l => l.id === lead.id ? lead : l)); setSigFlow(null); };
+
+  const handleCreateAngebotFromLead = (lead) => {
+    const faellig = new Date(); faellig.setDate(faellig.getDate() + 30);
+    const a = { id: uid(), nummer: angebotsNr(), kunde_name: lead.name, kunde_firma: lead.firma || "", kunde_email: lead.email || "", leistung_name: lead.leistung_name || "", leistung_beschreibung: lead.leistung_beschreibung || "", preis: lead.preis || "", datum: today(), faellig: faellig.toISOString().split("T")[0], status: "Offen", verkaeufer_id: user.id, notizen: lead.notizen || "" };
+    setAngebote(prev => [...prev, a]);
+    setLeadModal(null);
+    setView("angebote");
+  };
+
+  if (!user) return <LoginScreen onLogin={setUser} />;
+
+  return (
+    <div style={{ fontFamily: "'DM Sans', sans-serif", background: BG, color: TEXT, minHeight: "100vh", display: "flex" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap'); *{box-sizing:border-box;margin:0;padding:0} ::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-track{background:#0f0f0f} ::-webkit-scrollbar-thumb{background:#e8c547;border-radius:2px} @media(max-width:768px){.admin-sidebar{display:none!important}.admin-main{margin-left:0!important;padding:20px!important}}`}</style>
+
+      <Sidebar view={view} setView={setView} user={user} onLogout={() => setUser(null)} />
+
+      <div className="admin-main" style={{ marginLeft: 220, flex: 1, padding: "40px", overflowY: "auto", minHeight: "100vh" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          {view === "dashboard" && <Dashboard leads={leads} rechnungen={rechnungen} user={user} />}
+          {view === "pipeline" && <Pipeline leads={leads} setLeads={setLeads} user={user} users={users} onOpenLead={(lead) => setLeadModal(lead || { id: uid(), name: "", firma: "", email: "", telefon: "", leistung_name: "", leistung_beschreibung: "", preis: "", status: "Lead", verkaeufer_id: user.id, notizen: "", erstellt: today() })} />}
+          {view === "kunden" && <Kunden leads={leads} setLeads={setLeads} user={user} users={users} />}
+          {view === "angebote" && <Angebote angebote={angebote} setAngebote={setAngebote} leads={leads} user={user} users={users} />}
+          {view === "rechnungen" && <Rechnungen rechnungen={rechnungen} setRechnungen={setRechnungen} leads={leads} angebote={angebote} user={user} users={users} />}
+          {view === "team" && user.role === "admin" && <Team users={users} setUsers={setUsers} />}
+          {view === "inhalte" && user.role === "admin" && <InhalteEditor />}
+        </div>
       </div>
+
+      {leadModal !== null && (
+        <LeadModal lead={leadModal.name !== undefined && leadModal.id ? leads.find(l => l.id === leadModal.id) || leadModal : leadModal}
+          user={user} users={users} onSave={handleSaveLead} onClose={() => setLeadModal(null)}
+          onCreateAngebot={handleCreateAngebotFromLead}
+          onSignature={(lead) => { setSigFlow(lead); setLeadModal(null); }} />
+      )}
+
+      {sigFlow && <SignatureFlow lead={sigFlow} user={user} onClose={() => setSigFlow(null)} onSigned={handleSigned} />}
     </div>
-  );
-}
-
-function Footer({setLegal,to}){
-  return(
-    <footer style={{background:"#040404",borderTop:`1px solid rgba(255,255,255,.05)`,padding:"52px 0 28px"}}>
-      <div className="W">
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:40,flexWrap:"wrap",gap:28}}>
-          <div>
-            <div style={{fontSize:21,fontWeight:800,letterSpacing:"-.04em",marginBottom:6}}>Ohnesorge<span style={{color:P}}>.</span></div>
-            <div style={{fontSize:13,color:TF}}>Webdesign & KI-Automatisierung · Dresden</div>
-          </div>
-          <div style={{display:"flex",gap:48,flexWrap:"wrap"}}>
-            <div><div style={{fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:".1em",color:TF,marginBottom:14}}>Leistungen</div>{["Webdesign","KI-Automatisierung","Preise","Projekte"].map(l=><div key={l} onClick={()=>to(l.toLowerCase())} style={{fontSize:14,color:TD,marginBottom:10,cursor:"pointer",transition:"color .15s"}} onMouseOver={e=>e.currentTarget.style.color=P} onMouseOut={e=>e.currentTarget.style.color=TD}>{l}</div>)}</div>
-            <div><div style={{fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:".1em",color:TF,marginBottom:14}}>Rechtliches</div>{[["impressum","Impressum"],["datenschutz","Datenschutz"],["agb","AGB"]].map(([id,l])=><div key={id} onClick={()=>setLegal(id)} style={{fontSize:14,color:TD,marginBottom:10,cursor:"pointer",transition:"color .15s"}} onMouseOver={e=>e.currentTarget.style.color=P} onMouseOut={e=>e.currentTarget.style.color=TD}>{l}</div>)}</div>
-          </div>
-        </div>
-        <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10,paddingTop:24,borderTop:"1px solid rgba(255,255,255,.04)",fontSize:12,color:TF}}>
-          <span>© 2026 Alexandros Ohnesorge · Dresden · Alle Rechte vorbehalten</span><span>Made in Dresden ♥</span>
-        </div>
-      </div>
-    </footer>
-  );
-}
-
-export default function App(){
-  const[scrollY,setScrollY]=useState(0);const[legal,setLegal]=useState(null);
-  useEffect(()=>{const fn=()=>setScrollY(window.scrollY);window.addEventListener("scroll",fn,{passive:true});return()=>window.removeEventListener("scroll",fn);},[]);
-  const to=id=>{const el=document.getElementById(id);if(!el){window.scrollTo({top:0,behavior:"smooth"});return;}window.scrollTo({top:el.getBoundingClientRect().top+window.scrollY-80,behavior:"smooth"});};
-  return(
-    <>
-      <style>{CSS}</style>
-      <Nav scrollY={scrollY} to={to}/>
-      <Hero to={to}/>
-      <StatsBar/>
-      <ProblemSection/>
-      <section id="check" className="S SD SDB"><div className="W">
-        <div className="G2C">
-          <div>
-            <div className="SECL"><p className="TAG">Kostenlose Analyse</p></div>
-            <h2 className="H2" style={{marginBottom:16}}>Finden Sie heraus wo Ihre Website Kunden verliert.</h2>
-            <p style={{fontSize:16,color:TD,lineHeight:1.8,marginBottom:32}}>3 kurze Fragen — ich erstelle sofort eine persönliche Empfehlung. Powered by Claude AI.</p>
-            <div style={{display:"flex",flexDirection:"column",gap:14}}>
-              {[["⏱","Ergebnis in unter 60 Sekunden"],["🎯","Auf Ihre Situation zugeschnitten"],["📊","Konkrete Probleme + sofort umsetzbare Maßnahmen"],["💬","Gratis-Gespräch wenn Sie mehr wollen"]].map(([ic,tx])=>(
-                <div key={tx} style={{display:"flex",gap:14,alignItems:"center"}}>
-                  <div style={{width:36,height:36,borderRadius:9,background:PD,border:`1px solid ${PB}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{ic}</div>
-                  <span style={{fontSize:14,color:TD}}>{tx}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div style={{background:B3,border:`1px solid ${BR2}`,borderRadius:16,padding:36}}>
-            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:28,paddingBottom:20,borderBottom:`1px solid ${BR}`}}>
-              <div style={{width:36,height:36,borderRadius:9,background:PD,border:`1px solid ${PB}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>✦</div>
-              <div><div style={{fontSize:13,fontWeight:700,color:T}}>Website-Analyse</div><div style={{fontSize:11,color:TF}}>Powered by Claude AI</div></div>
-            </div>
-            <CheckTool/>
-          </div>
-        </div>
-      </div></section>
-      <Leistungen to={to}/>
-      <AutomationSection/>
-      <Preise to={to}/>
-      <Prozess/>
-      <FAQ/>
-      <Zielgruppen to={to}/>
-      <ProjektGalerie/>
-      <Testimonials/>
-      <UeberMich to={to}/>
-      <section style={{background:"linear-gradient(180deg,#0e0e0e 0%,#060606 100%)",borderTop:`1px solid ${PB}`,padding:"112px 0",textAlign:"center"}}>
-        <div className="W" style={{maxWidth:620}}>
-          <p style={{fontSize:11,fontWeight:600,letterSpacing:".14em",textTransform:"uppercase",color:TF,marginBottom:16}}>Nächster Schritt</p>
-          <h2 className="H2" style={{marginBottom:16}}>Bereit für den Unterschied?</h2>
-          <p style={{fontSize:17,color:TD,lineHeight:1.8,marginBottom:44}}>Erstgespräch kostenlos. Website-Check kostenlos. Kein Kaufdruck.</p>
-          <div className="HBTNS" style={{display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap"}}>
-            <button onClick={()=>to("check")} className="B" style={{padding:"16px 32px",fontSize:16}}>Website-Check starten ✦</button>
-            <button onClick={()=>to("kontakt")} className="BO" style={{padding:"15px 28px",fontSize:16}}>Erstgespräch buchen</button>
-          </div>
-        </div>
-      </section>
-      <Kontakt/>
-      <Footer setLegal={setLegal} to={to}/>
-      {legal&&<LegalModal id={legal} onClose={()=>setLegal(null)}/>}
-      <CookieBanner/>
-      <ChatWidget/>
-      {scrollY>500&&<button onClick={()=>to("hero")} style={{position:"fixed",bottom:76,left:20,width:40,height:40,borderRadius:"50%",background:B3,border:`1px solid ${BR}`,color:T,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,fontSize:14,transition:"transform .2s"}} onMouseOver={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseOut={e=>e.currentTarget.style.transform=""}>↑</button>}
-    </>
   );
 }
