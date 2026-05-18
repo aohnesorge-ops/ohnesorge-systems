@@ -12,7 +12,7 @@ const DEF_PAKETE=[
 ];
 function lsGet(k,d){try{const v=localStorage.getItem("os_content_"+k);return v?JSON.parse(v):d;}catch{return d;}}
 
-const WORDS=["eine neue Website","mehr Kundenanfragen","automatisierte Prozesse","messbares Wachstum","eine starke Online-Präsenz"];
+const WORDS=["eine neue Website","mehr Anfragen","Automation","bessere Sichtbarkeit","messbares Wachstum"];
 const MARKET_STATS=[
   {num:"73%",label:"der Kunden prüfen eine Website bevor sie anrufen"},
   {num:"8 Sek.",label:"— so lange haben Sie um online zu überzeugen"},
@@ -179,7 +179,10 @@ function Hero({to}){
             Aktuell verfügbar · 2 freie Plätze im Juni
           </div>
           <h1 style={{fontSize:"clamp(42px,6.5vw,82px)",fontWeight:800,letterSpacing:"-.04em",lineHeight:1.03,color:T,marginBottom:24,animation:"fadeUp .5s .1s ease both"}}>
-            Ihr Unternehmen braucht<br/><span style={{color:P}}>{text}<span style={{borderRight:"2.5px solid #8b5cf6",marginLeft:1,animation:"blink 1s infinite",display:"inline-block",width:2}}> </span></span>
+            Ihr Unternehmen braucht<br/>
+            <span style={{display:"block",minHeight:"1.1em",color:P}}>
+              {text}<span style={{borderRight:"2.5px solid #8b5cf6",marginLeft:1,animation:"blink 1s infinite",display:"inline-block",width:2}}> </span>
+            </span>
           </h1>
           <p style={{fontSize:"clamp(16px,1.8vw,19px)",color:TD,lineHeight:1.78,maxWidth:560,marginBottom:40,animation:"fadeUp .5s .2s ease both"}}>
             Professionelle Websites und KI-Automatisierungen für lokale Unternehmen in Dresden. Festpreis. Fertig in 7 Tagen. Kein Agentur-Aufwand.
